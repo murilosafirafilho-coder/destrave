@@ -8,10 +8,23 @@
   var sb = null;
   var pronto;
 
-  if (window.supabase && cfg.SUPABASE_URL && cfg.SUPABASE_ANON_KEY) {
-    sb = window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY, {
-      auth: { persistSession: true, autoRefreshToken: true, storageKey: "destrave-sessao" },
-    });
+  var urlOk = /^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(String(cfg.SUPABASE_URL || ""));
+  var chaveOk = String(cfg.SUPABASE_ANON_KEY || "").length > 20 && !/COLE_AQUI/.test(cfg.SUPABASE_ANON_KEY);
+  if (!urlOk || !chaveOk) {
+    console.error("Destrave: config.js sem os dados do Supabase. SUPABASE_URL deve ser https://<projeto>.supabase.co (sem /rest/v1) e SUPABASE_ANON_KEY a chave anon public.");
+  }
+  // Uma configuração errada nunca derruba a ponte: o app continua abrindo e mostra a falha na geração.
+  try {
+    if (window.supabase && urlOk && chaveOk) {
+      sb = window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY, {
+        auth: { persistSession: true, autoRefreshToken: true, storageKey: "destrave-sessao" },
+      });
+    }
+  } catch (e) {
+    console.error("Destrave: não foi possível iniciar o Supabase.", e);
+    sb = null;
+  }
+  if (sb) {
     pronto = (async function () {
       var atual = await sb.auth.getSession();
       if (atual.data && atual.data.session) return atual.data.session;
