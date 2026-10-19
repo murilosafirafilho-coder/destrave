@@ -52,7 +52,8 @@ async function contarUso(token) {
 }
 
 module.exports = async function handler(req, res) {
-  const falha = (status, code, message) => res.status(status).json({ code, message: message || code });
+  // Cada falha também vai para os registros da Vercel (Projeto > Logs), para facilitar o diagnóstico.
+  const falha = (status, code, message) => { console.error(`[api/ia] ${status} ${code}: ${message || code}`); return res.status(status).json({ code, message: message || code }); };
   if (req.method !== "POST") return falha(405, "invalid_request", "Use POST.");
   if (!process.env.ANTHROPIC_API_KEY || !process.env.SUPABASE_URL || !process.env.SUPABASE_ANON_KEY)
     return falha(500, "upstream_error", "Servidor sem configuração: confira as variáveis de ambiente na Vercel.");
@@ -107,8 +108,10 @@ module.exports = async function handler(req, res) {
     // 429: limite da sua conta na Anthropic; 529: API sobrecarregada; 401: chave inválida.
     if (r.status === 429) return falha(429, "rate_limited", "Limite da API atingido.");
     if (r.status === 401 || r.status === 403) return falha(500, "upstream_error", "Chave da API inválida: confira ANTHROPIC_API_KEY.");
-    if (r.status === 400) return falha(400, "invalid_request", (dados.error && dados.error.message) || "Pedido recusado pela API.");
-    return falha(502, "upstream_error", "A IA está indisponível agora.");
+    const msgApi = (dados.error && dados.error.message) || "";
+    if (/credit balance|billing|credits/i.test(msgApi)) return falha(502, "upstream_error", "Conta da Anthropic sem créditos: " + msgApi);
+    if (r.status === 400) return falha(400, "invalid_request", msgApi || "Pedido recusado pela API.");
+    return falha(502, "upstream_error", `A IA está indisponível agora (${r.status}${msgApi ? ": " + msgApi : ""}).`);
   }
   if (dados.stop_reason === "refusal") return falha(422, "refused", "A IA recusou o pedido.");
   const texto = (dados.content || []).filter(b => b.type === "text").map(b => b.text).join("");
