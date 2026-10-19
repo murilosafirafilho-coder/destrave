@@ -9,13 +9,22 @@
 //   LIMITE_DIARIO       opcional (padrão 40): chamadas à IA por pessoa por dia
 
 const MAX_ENTRADA = 60000;      // caracteres por pedido (o plano usa cerca de 11 mil)
-const MAX_SAIDA_JSON = 12000;   // tokens de resposta para o plano
-const MAX_SAIDA_TEXTO = 1500;   // tokens de resposta para o chat
+const MAX_SAIDA_JSON = 16000;   // tokens de resposta para o plano (inclui qualquer "pensamento" do modelo)
+const MAX_SAIDA_TEXTO = 2000;   // tokens de resposta para o chat
 const TEMPO_MAX = 280000;       // a Vercel gratuita encerra em 300 s
 
 function modeloPara(tier) {
   if (tier === "quick") return process.env.MODELO_RAPIDO || "claude-haiku-5-5";
   return process.env.MODELO_PADRAO || "claude-sonnet-5-5";
+}
+
+// Os modelos 5.5 "pensam" antes de responder por padrão, e esse pensamento conta no limite de resposta.
+// Para o plano e o chat não precisamos disso: desligamos do jeito que a documentação indica para cada modelo.
+// (Haiku 5.5 aceita "disabled"; Sonnet 5.5 recusa "disabled" e usa "between_tools", que sem ferramentas não pensa antes.)
+function pensamentoPara(modelo) {
+  if (/haiku/i.test(modelo)) return { type: "disabled" };
+  if (/sonnet-5/i.test(modelo)) return { type: "between_tools" };
+  return undefined;
 }
 
 // A entrada do app é um texto ou uma lista de turnos. A API pede turnos alternados,
@@ -75,35 +84,51 @@ module.exports = async function handler(req, res) {
   if (uso.n > limite) return falha(429, "rate_limited", "Limite diário de uso da IA atingido.");
 
   const json = !!body.json;
+  const modelo = modeloPara(body.modelTier);
   const pedido = {
-    model: modeloPara(body.modelTier),
+    model: modelo,
     max_tokens: json ? MAX_SAIDA_JSON : MAX_SAIDA_TEXTO,
     messages: mensagens,
   };
+  const pensamento = pensamentoPara(modelo);
+  if (pensamento) pedido.thinking = pensamento;
   if (json) pedido.system = "Responda somente com um único valor JSON válido, sem nenhum texto antes ou depois, e sem bloco de código.";
 
-  const ctl = new AbortController();
-  const timer = setTimeout(() => ctl.abort(), TEMPO_MAX);
-  let r;
+  const inicio = Date.now();
+  async function chamarIA(corpo) {
+    const ctl = new AbortController();
+    const timer = setTimeout(() => ctl.abort(), Math.max(5000, TEMPO_MAX - (Date.now() - inicio)));
+    try {
+      const resp = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "x-api-key": process.env.ANTHROPIC_API_KEY,
+          "anthropic-version": "2023-06-01",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify(corpo),
+        signal: ctl.signal,
+      });
+      let d = {};
+      try { d = await resp.json(); } catch (e) {}
+      return { r: resp, dados: d };
+    } finally { clearTimeout(timer); }
+  }
+
+  let r, dados;
   try {
-    r = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "x-api-key": process.env.ANTHROPIC_API_KEY,
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json",
-      },
-      body: JSON.stringify(pedido),
-      signal: ctl.signal,
-    });
+    ({ r, dados } = await chamarIA(pedido));
+    // Se o modelo configurado não aceitar o ajuste de pensamento, tenta uma vez sem ele.
+    const msg0 = (dados.error && dados.error.message) || "";
+    if (r.status === 400 && pedido.thinking && /thinking/i.test(msg0)) {
+      console.error(`[api/ia] modelo ${modelo} recusou thinking=${JSON.stringify(pedido.thinking)}: ${msg0}. Tentando sem.`);
+      delete pedido.thinking;
+      ({ r, dados } = await chamarIA(pedido));
+    }
   } catch (e) {
-    clearTimeout(timer);
     return falha(504, "upstream_error", "A IA demorou demais para responder.");
   }
-  clearTimeout(timer);
 
-  let dados = {};
-  try { dados = await r.json(); } catch (e) {}
   if (!r.ok) {
     // 429: limite da sua conta na Anthropic; 529: API sobrecarregada; 401: chave inválida.
     if (r.status === 429) return falha(429, "rate_limited", "Limite da API atingido.");
@@ -115,7 +140,11 @@ module.exports = async function handler(req, res) {
   }
   if (dados.stop_reason === "refusal") return falha(422, "refused", "A IA recusou o pedido.");
   const texto = (dados.content || []).filter(b => b.type === "text").map(b => b.text).join("");
-  if (!texto.trim()) return falha(502, "empty_completion", "A IA não devolveu texto.");
+  if (!texto.trim()) {
+    const tipos = (dados.content || []).map(b => b.type).join(",") || "nenhum";
+    const uso = dados.usage ? ` (tokens de saída: ${dados.usage.output_tokens})` : "";
+    return falha(502, "empty_completion", `A IA não devolveu texto. Motivo do fim: ${dados.stop_reason}; blocos: ${tipos}${uso}; modelo: ${modelo}.`);
+  }
   return res.status(200).json({ text: texto, truncated: dados.stop_reason === "max_tokens" });
 };
 
