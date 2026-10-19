@@ -137,6 +137,14 @@ input[readonly]{opacity:.75;cursor:default}
 .chead{display:flex;justify-content:space-between;align-items:center}
 .chead b{font-size:.9rem}
 .cadd{align-self:flex-start}
+.ilist{display:flex;flex-direction:column;gap:6px}
+.introw{display:grid;grid-template-columns:1fr auto 1fr auto;gap:6px;align-items:center}
+.introw span{font-size:.84rem;color:var(--muted)}
+.introw input[type=time]{min-width:0;width:100%;padding:8px 6px 8px 8px;background:var(--bg)}
+.introw .mini{padding:6px 8px}
+.ilabel{font-size:.84rem;color:var(--muted);margin:2px 0 -2px}
+.btn.ghost.addint{align-self:center;border-color:var(--accent);padding:9px 18px;font-size:.92rem}
+.editdias{align-self:center;display:inline-flex;gap:6px;align-items:center}
 .cal{background:var(--sunk);border:1px solid var(--line);border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:6px}
 .calhead{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .calhead b{font-family:var(--display)}
@@ -181,6 +189,19 @@ input[readonly]{opacity:.75;cursor:default}
 .fact:last-child{border-bottom:0}
 .fact b{font-family:var(--mono);font-size:.86rem;text-align:right;font-variant-numeric:tabular-nums}
 .fact small{grid-column:1/-1;color:var(--muted);font-size:.78rem;margin-top:-4px}
+/* conferência: semana dia a dia */
+.wk{display:flex;flex-direction:column}
+.wkrow{display:grid;grid-template-columns:38px 1fr auto;gap:10px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line)}
+.wkrow:last-child{border-bottom:0}
+.wkd{font:700 .92rem var(--display)}
+.wkt{font-size:.9rem;line-height:1.35;min-width:0}
+.wkt small{display:block;color:var(--muted);font-size:.78rem}
+.wkrow.folga .wkt{color:var(--muted)}
+.wkl{text-align:right;min-width:62px}
+.wkl b{font:500 .86rem var(--mono);font-variant-numeric:tabular-nums}
+.wkbar{display:block;height:5px;border-radius:9px;background:var(--sunk);margin-top:4px;overflow:hidden}
+.wkbar i{display:block;height:100%;background:var(--ok);border-radius:9px}
+.rvnote{font-size:.78rem;color:var(--muted);margin-top:8px}
 /* loading */
 .load{display:flex;flex-direction:column;gap:8px;list-style:none;margin:0;padding:0}
 .load li{display:flex;gap:10px;align-items:center;font-size:.95rem;color:var(--muted)}
@@ -351,10 +372,41 @@ const SECS=[
 // Semana de trabalho dia a dia: cada dia marcado tem local (Presencial/Casa) e horário próprio.
 // Dias que a pessoa não ajustou seguem o horário mais comum. Respostas antigas sem essa pergunta: deslocamento 0 = Casa.
 const MODOS=["Presencial","Casa"];
+const LOCAIS=["Presencial","Em casa","Varia (híbrido)"],VARIA="Varia (híbrido)";
+const INT_MAX=3;
+// A edição dia a dia vale quando a pessoa abriu "Editar horários", escolheu "Varia (híbrido)",
+// ou tem respostas antigas (feitas antes desta pergunta) com ajustes por dia.
+const editaDias=a=>a.editar_dias===true||a.local_trab===VARIA||(a.local_trab==null&&!!a.semana_trab);
+// Intervalos livres dentro do trabalho/estudo: [{ini,fim}]; os incompletos são ignorados no cálculo.
+const intOk=l=>(Array.isArray(l)?l:[]).filter(x=>x&&toMin(x.ini)!=null&&toMin(x.fim)!=null);
 function semTrab(a){
-  const out={},st=a.semana_trab||{},legado=!a.semana_trab&&a.desloc_min!==""&&a.desloc_min!=null&&Number(a.desloc_min)===0;
-  (a.dias_trab||[]).forEach(d=>{const x=st[d]||{};out[d]={modo:MODOS.includes(x.modo)?x.modo:(legado?"Casa":"Presencial"),ini:x.ini||a.trab_ini||"",fim:x.fim||a.trab_fim||""}});
+  const out={},st=a.semana_trab||{},ed=editaDias(a);
+  const legado=a.local_trab==null&&!a.semana_trab&&a.desloc_min!==""&&a.desloc_min!=null&&Number(a.desloc_min)===0;
+  const modoBase=a.local_trab==="Em casa"?"Casa":a.local_trab==="Presencial"||a.local_trab===VARIA?"Presencial":(legado?"Casa":"Presencial");
+  (a.dias_trab||[]).forEach(d=>{const x=ed?(st[d]||{}):{};out[d]={
+    modo:MODOS.includes(x.modo)&&(ed)?x.modo:modoBase,
+    ini:x.ini||a.trab_ini||"",fim:x.fim||a.trab_fim||"",
+    intervalos:Array.isArray(x.intervalos)?x.intervalos:(Array.isArray(a.intervalos)?a.intervalos:[]),
+    proprio:Array.isArray(x.intervalos)}});
   return out;
+}
+// Erro nos intervalos de uma lista, dado o horário de trabalho daquele dia (aceita turno que vira a noite).
+function intErro(lista,ini,fim,rotulo){
+  const t=turno(ini,fim);if(!t)return"";
+  const rel=v=>{let m=toMin(v);if(m<t.ini)m+=1440;return m};
+  const ok=[];
+  for(let i=0;i<(lista||[]).length;i++){
+    const x=lista[i],n=`${rotulo}intervalo ${i+1}: `;
+    if(!x||!x.ini||!x.fim)return n+"preencha o início e o fim, ou remova o intervalo.";
+    const s0=rel(x.ini),e0=rel(x.fim);
+    if(e0<=s0)return n+"o fim precisa ser depois do início.";
+    if(s0<t.ini||e0>t.fim)return n+`precisa ficar dentro do horário de trabalho (${ini} às ${fim}).`;
+    if(ok.some(([a,b])=>s0<b&&e0>a))return n+"está sobrepondo outro intervalo.";
+    ok.push([s0,e0]);
+  }
+  const total=ok.reduce((n,[a,b])=>n+b-a,0);
+  if(ok.length&&total>=t.dur)return`${rotulo}os intervalos ocupam o trabalho inteiro. Se esse dia não tem trabalho, desmarque o dia.`;
+  return"";
 }
 const temPresencial=a=>Object.values(semTrab(a)).some(x=>x.modo==="Presencial");
 const hasDesloc=a=>temPresencial(a)&&Number(a.desloc_min)>0;
@@ -379,8 +431,9 @@ const Q=[
  {id:"p_falha",s:"perso",type:"radio",label:"Quando você falha um dia no que planejou, o que costuma acontecer?",req:1,opts:["Retomo no dia seguinte","Desanimo por alguns dias","Largo tudo e recomeço do zero depois"]},
  {id:"p_cumprir",s:"perso",type:"radio",label:"O que mais te faz cumprir um compromisso?",req:1,other:1,opts:["Ter um prazo","Ter combinado com outra pessoa","Ver meu progresso registrado","Ter uma recompensa no fim"]},
  {id:"dias_trab",s:"tempo",type:"check",label:"Em quais dias você trabalha ou estuda?",req:1,opts:WD,wrap:1},
- {id:"trab",s:"tempo",type:"timepair",label:"Horário de trabalho ou estudo mais comum",req:1,a:"trab_ini",b:"trab_fim",la:"Começa",lb:"Termina",show:a=>(a.dias_trab||[]).length>0},
- {id:"semana_trab",s:"tempo",type:"workweek",label:"Confira cada dia: onde você trabalha e em que horário",help:"Já preenchemos com o horário acima. Toque em Casa nos dias de home office e mude o horário só se aquele dia for diferente.",req:1,show:a=>(a.dias_trab||[]).length>0},
+ {id:"local_trab",s:"tempo",type:"radio",label:"Onde você trabalha ou estuda?",req:1,opts:LOCAIS,show:a=>(a.dias_trab||[]).length>0},
+ {id:"trab",s:"tempo",type:"worktime",label:"Horário de trabalho ou estudo mais comum",help:"Intervalo é um período dentro do trabalho ou estudo sem nenhuma responsabilidade, como um almoço longo ou uma janela entre aulas.",req:1,a:"trab_ini",b:"trab_fim",la:"Começa",lb:"Termina",show:a=>(a.dias_trab||[]).length>0},
+ {id:"semana_trab",s:"tempo",type:"workweek",label:"Horários de cada dia",help:"Já preenchemos com o horário acima. Mude só o que for diferente naquele dia.",req:1,show:a=>(a.dias_trab||[]).length>0&&editaDias(a)},
  {id:"flex",s:"tempo",type:"radio",label:"Você controla o seu horário de trabalho?",req:1,opts:["Sim, eu decido","Em parte","Não, é fixo"],show:a=>["Empresário","Autônomo ou freelancer"].includes(a.ocupacao)},
  {id:"desloc_min",s:"tempo",type:"number",label:"Nos dias presenciais, quantos minutos você gasta em deslocamento, somando ida e volta?",help:"Ex.: 45 min para ir e 45 para voltar = 90.",req:1,min:0,max:360,show:temPresencial},
  {id:"transporte",s:"tempo",type:"radio",label:"Como é esse trajeto?",req:1,opts:["Transporte público e consigo ler","Transporte público lotado, só dá para ouvir","Dirijo","A pé ou de bicicleta"],show:hasDesloc},
@@ -389,7 +442,7 @@ const Q=[
  {id:"casa_min",s:"tempo",type:"number",label:"Em dias úteis, quantos minutos você gasta com jantar, casa e cuidados pessoais depois do trabalho?",help:"Uma estimativa basta. Ex.: 75.",req:1,min:0,max:300},
  {id:"compromissos_l",s:"tempo",type:"commits",label:"Seus compromissos fixos da semana",help:"Reuniões semanais, faculdade, esporte, levar os filhos… Tudo o que tem dia e hora certos. Se não tiver nenhum, siga em frente."},
  {id:"compromissos",s:"tempo",type:"textarea",label:"Algo na sua semana muda de uma semana para outra?",ph:"Ex.: plantão a cada 15 dias; viagem a trabalho uma vez por mês"},
- {id:"ladrao",s:"tempo",type:"check",label:"O que mais rouba o seu tempo hoje?",help:"Até 3.",req:1,max:3,other:1,opts:["Celular e redes sociais","Trabalho que invade a noite","Tarefas de casa","Deslocamento","Falta de planejamento","Interrupções de outras pessoas"]},
+ {id:"ladrao",s:"tempo",type:"check",label:"O que mais rouba o seu tempo hoje?",help:"Até 3.",req:1,max:3,other:1,opts:["Celular e redes sociais","Trabalho que invade a noite","Tarefas de casa","Deslocamento","Falta de planejamento","Procrastinação","Interrupções de outras pessoas"]},
 
  {id:"treino_atual",s:"corpo",type:"radio",label:"Quantas vezes você pratica atividades físicas na semana?",req:1,opts:["Nenhuma","1 a 2","3 a 4","5 ou mais"],wrap:1},
  {id:"treino_padrao",s:"corpo",type:"radio",label:"Quando você tenta treinar com frequência, o que costuma acontecer?",req:1,opts:["Paro em 1 ou 2 semanas","Paro depois de 3 ou 4 semanas","Nem chego a começar","Nunca tentei de verdade"],show:a=>["Nenhuma","1 a 2"].includes(a.treino_atual)},
@@ -414,7 +467,7 @@ const Q=[
 
  {id:"lazer_hoje",s:"lazer",type:"check",label:"O que você faz no tempo livre hoje?",req:1,other:1,opts:["Rolo as redes sociais","Séries e filmes","Saio com amigos","Jogos","Fico com a família","Nada específico"],wrap:1},
  {id:"hobby_tem",s:"lazer",type:"text",label:"Hobbies que você pratica hoje",ph:"Ex.: futebol aos domingos"},
- {id:"hobby_quer",s:"lazer",type:"text",label:"Um hobby que você quer começar ou retomar",req:1,ph:"Ex.: voltar a tocar violão"},
+ {id:"hobby_quer",s:"lazer",type:"text",label:"Um hobby que você quer começar ou retomar",ph:"Ex.: voltar a tocar violão"},
  {id:"descanso",s:"lazer",type:"radio",label:"Como você descansa melhor?",req:1,opts:["Sozinho, em casa","Com outras pessoas","Ao ar livre","Fazendo algo com as mãos","Sendo criativo"]},
  {id:"culpa",s:"lazer",type:"scale",label:"Quanta culpa você sente quando tira um tempo para descansar?",req:1,lo:"Nenhuma",hi:"Muita"},
 
@@ -461,6 +514,8 @@ function calc(a){
       const t=turno(x.ini,x.fim),pres=x.modo==="Presencial";
       // turno da noite: o dia da pessoa começa ao acordar, então o trabalho entra depois disso no mesmo "dia"
       let ini=t.ini,fim=t.fim;if(ini<ac){ini+=1440;fim+=1440}
+      const desl=ini-t.ini;
+      o.intervalos=intOk(x.intervalos).map(v=>{let s=toMin(v.ini),e=toMin(v.fim);if(s<t.ini)s+=1440;if(e<t.ini)e+=1440;return[s+desl,e+desl,v.ini,v.fim]}).filter(([s,e])=>e>s&&s>=ini&&e<=fim).sort((p,q)=>p[0]-q[0]);
       o.modo=x.modo;o.ini=ini;o.fim=fim;o.noturno=t.noturno;o.desloc=pres?d:0;
       o.saida=ini-o.desloc/2;o.chegada=fim+o.desloc/2;
       if(t.dur>TURNO_MAX)err.push(`${w}: o trabalho iria de ${x.ini} a ${x.fim} (${dur(t.dur)}). Se o início e o fim ficaram trocados, corrija.`);
@@ -469,10 +524,11 @@ function calc(a){
       else if(dm-o.chegada<casa+filhos)err.push(`${w}: entre ${pres?"chegar em casa":"terminar o trabalho"} (${hhmm(o.chegada)}) e dormir (${hhmm(dm)}) não cabem os ${casa+filhos} min de casa${filhos?" e filhos":""}. Confira os minutos informados ou seus horários.`);
     }
     // compromissos do dia (só a parte fora do trabalho ocupa tempo livre)
-    const occ=[];if(trab)occ.push([Math.max(ac,o.saida-PREP),o.chegada]);
+    // o trabalho ocupa o dia, menos os intervalos livres
+    const occ=[];if(trab){let ini0=Math.max(ac,o.saida-PREP);for(const[s,e]of o.intervalos){occ.push([ini0,s]);ini0=e}occ.push([ini0,o.chegada])}
     comps.filter(cp=>cp.dias.includes(w)).forEach(cp=>{
       let s=toMin(cp.ini),e=toMin(cp.fim);if(s<ac){s+=1440;e+=1440}if(e<=s)e+=1440;
-      const dentro=trab&&s>=o.saida&&e<=o.chegada;
+      const dentro=trab&&s>=o.saida&&e<=o.chegada&&!o.intervalos.some(([is,ie])=>s<ie&&e>is);
       o.comps.push({nome:cp.nome,tipo:cp.tipo,inicio:cp.ini,fim:cp.fim,s,e,dentro});
       occ.push([s,e]);
     });
@@ -499,7 +555,7 @@ function calc(a){
 function ctxDay(c,day){const o=c.dia&&c.dia[day];return o?Object.assign({},c,o):c}
 // Resumo legível da semana de trabalho, agrupando dias iguais. Ex.: "Seg, Ter: presencial 08:00–18:00 · Qua: em casa 09:00–17:00"
 function resumoTrab(c){
-  const g=[];c.diasTrab.forEach(w=>{const o=c.dia[w],k=`${o.modo==="Casa"?"em casa":"presencial"} ${hhmm(o.ini)}–${hhmm(o.fim)}${o.noturno?" (vira a noite)":""}`;const x=g.find(y=>y.k===k);if(x)x.d.push(DABR(w));else g.push({k,d:[DABR(w)]})});
+  const g=[];c.diasTrab.forEach(w=>{const o=c.dia[w],k=`${o.modo==="Casa"?"em casa":"presencial"} ${hhmm(o.ini)}–${hhmm(o.fim)}${o.noturno?" (vira a noite)":""}${o.intervalos.length?", intervalo "+o.intervalos.map(v=>`${v[2]}–${v[3]}`).join(" e "):""}`;const x=g.find(y=>y.k===k);if(x)x.d.push(DABR(w));else g.push({k,d:[DABR(w)]})});
   return g.map(x=>`${x.d.join(", ")}: ${x.k}`).join(" · ");
 }
 // Nome do dia da semana de uma data (Segunda a Domingo) e os 7 dias do desafio a partir do início.
@@ -525,7 +581,8 @@ function factsList(a,c){
 // Texto de uma resposta, para a IA e para "Ver minhas respostas".
 function ansText(q,a,sep){
   if(q.type==="timepair")return a[q.a]||a[q.b]?`${a[q.a]||"?"} – ${a[q.b]||"?"}`:"";
-  if(q.type==="workweek"){const st=semTrab(a);return Object.keys(st).map(w=>`${w}: ${st[w].modo==="Casa"?"em casa (home office)":"presencial"}, ${st[w].ini||"?"}–${st[w].fim||"?"}`).join(sep||"; ")}
+  if(q.type==="worktime"){const l=intOk(a.intervalos);return a[q.a]||a[q.b]?`${a[q.a]||"?"} – ${a[q.b]||"?"}${l.length?`; intervalo livre: ${l.map(x=>`${x.ini}–${x.fim}`).join(" e ")}`:""}${editaDias(a)?" (com ajustes por dia, abaixo)":""}`:""}
+  if(q.type==="workweek"){const st=semTrab(a);return Object.keys(st).map(w=>{const l=intOk(st[w].intervalos);return `${w}: ${st[w].modo==="Casa"?"em casa (home office)":"presencial"}, ${st[w].ini||"?"}–${st[w].fim||"?"}${l.length?`, intervalo livre ${l.map(x=>`${x.ini}–${x.fim}`).join(" e ")}`:""}`}).join(sep||"; ")}
   if(q.type==="commits"){const l=compList(a);return l.length?l.map(x=>`${x.nome} (${x.tipo||"Outro"}): ${x.dias.join(", ")}, ${x.ini}–${x.fim}`).join(sep||"; "):"nenhum"}
   let v=a[q.id];const oth=a[q.id+"_outro"],fx=x=>x===trigOf(q)&&oth?`${x}: ${oth}`:x;
   if(Array.isArray(v))v=v.map(fx).join(sep||"; ");else v=fx(v);
@@ -537,7 +594,7 @@ function buildPrompt(a,c,startTs){
     const v=ansText(q,a);
     return `- ${q.label} → ${v===""?"(não respondeu)":v}`;}).join("\n");
   const agenda=WD.map(w=>{const o=c.dia[w];
-    const t=o.trab?(o.modo==="Casa"?`trabalho em casa ${hhmm(o.ini)}–${hhmm(o.fim)} (sem trajeto)`:`trabalho presencial ${hhmm(o.ini)}–${hhmm(o.fim)}; ocupado com trabalho + trajeto de ${hhmm(o.saida)} a ${hhmm(o.chegada)}`):"sem trabalho";
+    const t=o.trab?(o.modo==="Casa"?`trabalho em casa ${hhmm(o.ini)}–${hhmm(o.fim)} (sem trajeto)`:`trabalho presencial ${hhmm(o.ini)}–${hhmm(o.fim)}; ocupado com trabalho + trajeto de ${hhmm(o.saida)} a ${hhmm(o.chegada)}`)+(o.intervalos.length?`; intervalo livre dentro do trabalho: ${o.intervalos.map(v=>`${v[2]}–${v[3]}`).join(" e ")} (${o.modo==="Casa"?"em casa":"no local de trabalho"})`:""):"sem trabalho";
     const cp=o.comps.length?"; compromissos fixos: "+o.comps.map(x=>`${x.nome} ${x.inicio}–${x.fim}${x.dentro?" (dentro do horário de trabalho)":""}`).join(", "):"";
     return `  - ${w}: acordado de ${hhmm(o.acorda)} a ${o.dormeTxt}; ${t}${cp}; tempo livre estimado ${dur(o.livre)}.`}).join("\n");
   const calcTxt=factsList(a,c).map(f=>`- ${f[0]}: ${f[1]}${f[2]?" ("+f[2]+")":""}`).join("\n");
@@ -559,13 +616,13 @@ ${agenda}
 REGRAS OBRIGATÓRIAS:
 1. Identifique UM gargalo principal (o que mais trava a pessoa) e ligue-o a uma das 4 esferas, que recebe papel "principal". As outras três recebem papel "apoio". Todas as quatro têm ações.
 2. Cada ação, explicação e meta deve citar um dado concreto das respostas. Proibido conselho genérico ("beba água", "tenha disciplina", "acredite em você").
-3. Use a agenda de CADA dia acima. Em cada dia de trabalho, nenhum bloco (exceto esfera "fixo") pode cair no horário ocupado daquele dia (presencial: trabalho + trajeto; em casa: só o horário de trabalho)${c.almoco?", exceto treino (esfera corpo) entre 11:30 e 14:00, porque a pessoa prefere treinar no almoço":""}. Nenhum bloco pode começar antes de a pessoa acordar nem terminar depois de ela dormir naquele dia, exceto blocos da esfera "sono".${c.presDias.length&&c.casaDias.length?" A pessoa é híbrida: aproveite o tempo que sobra nos dias em casa (sem trajeto) para as tarefas mais longas, e deixe os dias presenciais mais leves.":""}
+3. Use a agenda de CADA dia acima. Em cada dia de trabalho, nenhum bloco (exceto esfera "fixo") pode cair no horário ocupado daquele dia (presencial: trabalho + trajeto; em casa: só o horário de trabalho), exceto dentro dos intervalos livres informados${c.almoco?", exceto treino (esfera corpo) entre 11:30 e 14:00, porque a pessoa prefere treinar no almoço":""}. Nenhum bloco pode começar antes de a pessoa acordar nem terminar depois de ela dormir naquele dia, exceto blocos da esfera "sono".${c.presDias.length&&c.casaDias.length?" A pessoa é híbrida: aproveite o tempo que sobra nos dias em casa (sem trajeto) para as tarefas mais longas, e deixe os dias presenciais mais leves.":""}
 4. Compromissos fixos: cada compromisso que fica fora do horário de trabalho entra na "semana", no dia e no horário exatos informados, com o mesmo nome; use a esfera "corpo" para esporte, "lazer" para lazer e "fixo" para o resto. Nenhum outro bloco pode cair em cima de um compromisso. Compromissos de esporte contam como treino na frequência da semana. Compromissos dentro do horário de trabalho não viram blocos, mas podem ser citados nas ações. Se a pessoa contou algo que muda de uma semana para outra, trate como premissa e diga qual.
-5. Use um bloco "fixo" para o trabalho (com o trajeto, nos dias presenciais) em cada dia de trabalho, e um bloco "sono" com a rotina de desligar antes de dormir. Atividades feitas DURANTE o trajeto (leitura, áudio) vão nas ações, não viram blocos.
+5. Use um bloco "fixo" para o trabalho (com o trajeto, nos dias presenciais) em cada dia de trabalho; nos dias com intervalo livre, divida esse bloco em partes e deixe o intervalo de fora. No intervalo, em dia presencial, só sugira o que dá para fazer no local (ler, estudar, planejar, caminhar perto); em casa, vale qualquer atividade curta. Inclua também um bloco "sono" com a rotina de desligar antes de dormir. Atividades feitas DURANTE o trajeto (leitura, áudio) vão nas ações, não viram blocos.
 6. Sono: se a pessoa dorme menos de 7h, antecipe o horário de dormir em no máximo 45 min nesta semana. Não fale de semanas seguintes.
 7. Treino: comece com no máximo a frequência atual + 1 vez por semana, mesmo que a meta seja maior; diga que a frequência sobe depois do desafio, se a semana funcionar. Nada de prescrição de exercícios, cargas, dieta ou suplementos.${a.saude==="Sim"?" A pessoa tem orientação médica: inclua a recomendação de seguir essa orientação e confirmar com o profissional antes de mudar a rotina de treino."+(a.saude_outro?" Ela descreveu a limitação; não sugira nenhuma atividade que a contrarie e não faça interpretação médica dela.":""):""}
 8. Foco: se houver 3 ou mais frentes, escolha UMA para a fase atual e coloque as outras em "adiado", dizendo que voltam depois do desafio.
-9. Lazer: inclua pelo menos 2 blocos de lazer protegidos na semana, ligados ao hobby que a pessoa quer começar ou retomar. Se a culpa ao descansar for 4 ou 5, trate o lazer como compromisso, não como prêmio.
+9. Lazer: inclua pelo menos 2 blocos de lazer protegidos na semana, ligados ao hobby que a pessoa quer começar ou retomar; se ela não informou, use os hobbies que já pratica, o que faz no tempo livre e o jeito como descansa melhor, sem inventar um hobby novo. Se a culpa ao descansar for 4 ou 5, trate o lazer como compromisso, não como prêmio.
 10. Os 7 dias começam leves e acrescentam uma peça por vez. Máximo de 4 tarefas por dia e no máximo ${c.limiteDia} min somados por dia. Cada item de "dias" segue a ordem informada acima e traz o campo "dia_semana"; as tarefas de cada dia precisam bater com os blocos da "semana" nesse dia da semana. O dia 7 (${ord[6]}) inclui a revisão da semana e responder a avaliação, e "revisao.quando" é esse dia.
 11. Livros: sugira 3 livros reais e conhecidos, com autor correto, ligados aos temas e ao objetivo. Se não tiver certeza de um livro, não o inclua.
 12. Não fale de dinheiro, orçamento ou investimentos. Não invente dados que a pessoa não deu; se faltar algo, use uma premissa conservadora e diga qual.
@@ -628,7 +685,7 @@ function validate(p,a,c){
       if(e<=s)e+=1440;
       if(!usados.has(b)&&b.esfera!=="sono"){const x=(cd.comps||[]).find(x=>!x.dentro&&s<x.e&&e>x.s);if(x)iss.push(`${name}: "${b.atividade}" (${b.inicio}–${b.fim}) cai em cima do compromisso "${x.nome}" (${x.inicio}–${x.fim}).`)}
       if(b.esfera!=="sono"){
-        if(work&&s<cd.chegada&&e>cd.saida){
+        if(work&&s<cd.chegada&&e>cd.saida&&!(cd.intervalos||[]).some(([is,ie])=>s>=is&&e<=ie)){
           const okAlmoco=c.almoco&&b.esfera==="corpo"&&s>=690&&e<=840;
           if(!okAlmoco)iss.push(`${name}: "${b.atividade}" (${b.inicio}–${b.fim}) cai no horário de trabalho${cd.desloc?" ou deslocamento":""} (${hhmm(cd.saida)}–${hhmm(cd.chegada)}).`);
         }
@@ -671,7 +728,7 @@ function fitCheck(blocks,nb,c){
 
 // ---------- exemplo (perfil fictício) ----------
 const EX_ANS={nome:"Rafael",email:"rafael@example.com",telefone:"(11) 90000-0000",idade:29,ocupacao:"CLT presencial",resp:["Moro sozinho"],travado:"Estou há 2 anos no mesmo cargo e nada que começo vai pra frente",
- dias_trab:["Segunda","Terça","Quarta","Quinta","Sexta"],trab_ini:"08:00",trab_fim:"18:00",desloc_min:90,transporte:"Transporte público e consigo ler",acorda:"06:30",dorme:"00:30",acorda_fds:"08:00",dorme_fds:"01:00",casa_min:75,
+ dias_trab:["Segunda","Terça","Quarta","Quinta","Sexta"],local_trab:"Presencial",intervalos:[],trab_ini:"08:00",trab_fim:"18:00",desloc_min:90,transporte:"Transporte público e consigo ler",acorda:"06:30",dorme:"00:30",acorda_fds:"08:00",dorme_fds:"01:00",casa_min:75,
  compromissos_l:[{nome:"Futebol com amigos",dias:["Domingo"],ini:"10:00",fim:"12:00",tipo:"Esporte"}],compromissos:"",ladrao:["Celular e redes sociais","Falta de planejamento"],
  treino_atual:"1 a 2",treino_padrao:"Paro depois de 3 ou 4 semanas",ativ_atuais:["Academia"],treino_meta:"4",treino_tipo:["Academia"],treino_hora:"À noite",sono_q:"2",energia:"Manhã",tela:"Quase todo dia",saude:"Não",
  objetivo:"Ser promovido a coordenador",porque:"Fui bem avaliado, mas fiquei para trás enquanto colegas subiram",frentes:3,frentes_lista:"Renda extra com edição de vídeo, inglês, voltar a treinar",
@@ -917,12 +974,30 @@ function calHTML(q){
 }
 
 /* ---------- semana de trabalho e compromissos ---------- */
+// Linhas de intervalo de uma lista (escopo "g" = todos os dias, ou o nome do dia).
+function intRows(lista,escopo){
+  return (lista||[]).map((x,i)=>`<div class="introw" data-i="${i}"><input type="time" class="int_ini" aria-label="${escopo==="g"?"":escopo+", "}intervalo ${i+1}: começa" value="${esc(x.ini||"")}"><span>às</span><input type="time" class="int_fim" aria-label="${escopo==="g"?"":escopo+", "}intervalo ${i+1}: termina" value="${esc(x.fim||"")}"><button type="button" class="mini" data-intrem="${escopo}:${i}" aria-label="Remover ${escopo==="g"?"":escopo+", "}intervalo ${i+1}">✕</button></div>`).join("");
+}
+const intBtn=(lista,escopo)=>(lista||[]).length<INT_MAX?`<button type="button" class="btn ghost addint" data-intadd="${escopo}">+ Adicionar intervalo</button>`:`<p class="small muted" style="text-align:center">Limite de ${INT_MAX} intervalos.</p>`;
+function wtHTML(q){
+  const a=S.a,l=Array.isArray(a.intervalos)?a.intervalos:[],aberto=editaDias(a);
+  return `<div class="q" data-q="${q.id}"><p class="ql">${esc(q.label)}</p>
+   <div class="two"><div><label for="q_${q.a}">${esc(q.la)}</label><input type="time" id="q_${q.a}" value="${esc(a[q.a]||"")}"></div><div><label for="q_${q.b}">${esc(q.lb)}</label><input type="time" id="q_${q.b}" value="${esc(a[q.b]||"")}"></div></div>
+   ${l.length?`<p class="ilabel">Intervalos${aberto?" (valem para todos os dias, salvo ajuste abaixo)":" (todos os dias)"}</p>`:""}
+   <div class="ilist" data-ilist="g">${intRows(l,"g")}</div>
+   ${intBtn(l,"g")}
+   <p class="qh" style="margin-top:2px">${esc(q.help)}</p>
+   ${a.local_trab===VARIA?`<p class="small muted" style="text-align:center">Como seus dias variam, ajuste cada um logo abaixo.</p>`:`<button type="button" class="link editdias" data-editdias="1" aria-expanded="${aberto}">${aberto?"Usar o mesmo horário em todos os dias":"✎ Editar horários"}</button>`}
+   <p class="qerr" hidden></p></div>`;
+}
 function wwHTML(q){
   const st=semTrab(S.a),ds=Object.keys(st);
   return `<div class="q" data-q="${q.id}"><p class="ql" id="q_${q.id}_l">${esc(q.label)}</p><p class="qh">${esc(q.help)}</p>
-   <div class="wwlist" role="group" aria-labelledby="q_${q.id}_l">${ds.map((w,i)=>`<div class="wrow" data-wd="${w}">
+   <div class="wwlist" role="group" aria-labelledby="q_${q.id}_l">${ds.map((w,i)=>`<div class="wrow" data-wd="${w}" data-own="${st[w].proprio?1:""}">
      <div class="wtop"><b>${w}</b><span class="wseg" role="group" aria-label="Onde você trabalha na ${w}">${MODOS.map(m=>`<button type="button" data-wwmodo="${m}" aria-pressed="${st[w].modo===m}">${m==="Casa"?"Casa":"Presencial"}</button>`).join("")}</span></div>
      <div class="wtimes"><input type="time" class="ww_ini" aria-label="${w}: começa" value="${esc(st[w].ini)}"><span>às</span><input type="time" class="ww_fim" aria-label="${w}: termina" value="${esc(st[w].fim)}"></div>
+     ${st[w].intervalos.length?`<p class="ilabel">Intervalos</p>`:""}<div class="ilist" data-ilist="${w}">${intRows(st[w].intervalos,w)}</div>
+     ${intBtn(st[w].intervalos,w)}
    </div>`).join("")}</div><p class="qerr" hidden></p></div>`;
 }
 function cmHTML(q){
@@ -948,10 +1023,12 @@ function compConflito(a){
   }
   return"";
 }
+const readInts=box=>box?[...box.querySelectorAll(".introw")].map(r=>({ini:r.querySelector(".int_ini").value,fim:r.querySelector(".int_fim").value})):[];
 function readWW(){
   const out={};document.querySelectorAll('[data-q="semana_trab"] .wrow').forEach(r=>{
     const w=r.dataset.wd,m=r.querySelector("[data-wwmodo][aria-pressed=true]"),i=r.querySelector(".ww_ini").value,f=r.querySelector(".ww_fim").value;
     out[w]={modo:m?m.dataset.wwmodo:"Presencial",ini:i&&i!==S.a.trab_ini?i:"",fim:f&&f!==S.a.trab_fim?f:""};
+    if(r.dataset.own==="1")out[w].intervalos=readInts(r.querySelector("[data-ilist]"));
   });
   return Object.assign({},S.a.semana_trab||{},out);
 }
@@ -960,6 +1037,8 @@ function readCM(){
     nome:r.querySelector(".ci_nome").value.trim(),dias:[...r.querySelectorAll(".ci_dia:checked")].map(x=>x.value),
     ini:r.querySelector(".ci_ini").value,fim:r.querySelector(".ci_fim").value,tipo:(r.querySelector(".ci_tipo:checked")||{}).value||""}));
 }
+// Atualiza o que aparece ou some na parte atual (perguntas com "show").
+function supEsconde(){Q.filter(q=>q.s===SECS[S.sec].id&&q.show).forEach(q=>{const b=document.querySelector(`[data-q="${q.id}"]`);if(b)b.hidden=!q.show(S.a)})}
 function reBox(id){const q=Q.find(x=>x.id===id),box=document.querySelector(`[data-q="${id}"]`);if(!q||!box)return;const h=box.hidden;box.outerHTML=qHTML(q);document.querySelector(`[data-q="${id}"]`).hidden=h}
 
 /* ---------- questionário ---------- */
@@ -984,6 +1063,7 @@ function qHTML(q){
   }
   if(q.type==="cal")return calHTML(q);
   if(q.type==="workweek")return wwHTML(q);
+  if(q.type==="worktime")return wtHTML(q);
   if(q.type==="commits")return cmHTML(q);
   if(q.type==="timepair"){
     return `<div class="q" data-q="${q.id}"><p class="ql">${esc(q.label)}</p><div class="two"><div><label for="q_${q.a}">${esc(q.la)}</label><input type="time" id="q_${q.a}" value="${esc(a[q.a]||"")}"></div><div><label for="q_${q.b}">${esc(q.lb)}</label><input type="time" id="q_${q.b}" value="${esc(a[q.b]||"")}"></div></div><p class="qerr" hidden></p></div>`;
@@ -1004,14 +1084,15 @@ function readQ(q){
   if(q.type==="cal")return S.a[q.id]||"";
   if(q.type==="workweek")return document.querySelector('[data-q="semana_trab"] .wrow')?readWW():(S.a.semana_trab||undefined);
   if(q.type==="commits")return document.querySelector('[data-q="compromissos_l"]')?readCM():(S.a.compromissos_l||[]);
-  if(q.type==="timepair")return null;
+  if(q.type==="timepair"||q.type==="worktime")return null;
   const el=$("#q_"+q.id);if(!el)return"";
   return q.type==="number"?(el.value===""?"":Number(el.value)):el.value.trim();
 }
 function syncSection(){
   const ww=Q.find(q=>q.s===SECS[S.sec].id&&q.type==="workweek");if(ww)S.a[ww.id]=readQ(ww);
   Q.filter(q=>q.s===SECS[S.sec].id&&q.type!=="workweek").forEach(q=>{
-    if(q.type==="timepair"){S.a[q.a]=$("#q_"+q.a).value;S.a[q.b]=$("#q_"+q.b).value}
+    if(q.type==="timepair"||q.type==="worktime"){S.a[q.a]=$("#q_"+q.a).value;S.a[q.b]=$("#q_"+q.b).value}
+    if(q.type==="worktime"){const g=document.querySelector('[data-ilist="g"]');if(g)S.a.intervalos=readInts(g)}
     else S.a[q.id]=readQ(q);
     if(hasBox(q)){const ob=$("#q_"+q.id+"_outro"),sel=[].concat(S.a[q.id]||[]);S.a[q.id+"_outro"]=ob.value.trim();ob.parentElement.hidden=!sel.includes(trigOf(q))}
   });
@@ -1022,10 +1103,17 @@ function checkSection(){
   let ok=true,first=null;
   Q.filter(q=>q.s===SECS[S.sec].id&&(!q.show||q.show(S.a))).forEach(q=>{
     const box=document.querySelector(`[data-q="${q.id}"]`),er=box.querySelector(".qerr");let msg="";
-    const v=q.type==="timepair"?null:S.a[q.id];
+    const v=q.type==="timepair"||q.type==="worktime"?null:S.a[q.id];
     if(q.type==="timepair"){if(!S.a[q.a]||!S.a[q.b])msg="Preencha os dois horários."}
+    else if(q.type==="worktime"){const t=turno(S.a[q.a],S.a[q.b]);
+      if(!S.a[q.a]||!S.a[q.b])msg="Preencha os dois horários.";
+      else if(t.dur===0)msg="O início e o fim estão iguais.";
+      else if(t.dur>TURNO_MAX)msg=`De ${S.a[q.a]} a ${S.a[q.b]} seriam ${dur(t.dur)} de trabalho. Se o início e o fim ficaram trocados, corrija. Turnos que viram a noite (ex.: 22:00 às 06:00) são aceitos.`;
+      else msg=intErro(S.a.intervalos,S.a[q.a],S.a[q.b],"");
+      if(msg)msg=msg[0].toUpperCase()+msg.slice(1)}
     else if(q.type==="workweek"){const st=semTrab(S.a),bad=Object.keys(st).find(w=>{const t=turno(st[w].ini,st[w].fim);return !t||t.dur===0||t.dur>TURNO_MAX});
-      if(bad){const t=turno(st[bad].ini,st[bad].fim);msg=!t?`Preencha o horário de ${bad}.`:t.dur===0?`${bad}: o início e o fim do trabalho estão iguais.`:`${bad}: de ${st[bad].ini} a ${st[bad].fim} seriam ${dur(t.dur)} de trabalho. Se o início e o fim ficaram trocados, corrija. Turnos que viram a noite (ex.: 22:00 às 06:00) são aceitos.`}}
+      if(bad){const t=turno(st[bad].ini,st[bad].fim);msg=!t?`Preencha o horário de ${bad}.`:t.dur===0?`${bad}: o início e o fim do trabalho estão iguais.`:`${bad}: de ${st[bad].ini} a ${st[bad].fim} seriam ${dur(t.dur)} de trabalho. Se o início e o fim ficaram trocados, corrija. Turnos que viram a noite (ex.: 22:00 às 06:00) são aceitos.`}
+      else for(const w of Object.keys(st)){msg=intErro(st[w].intervalos,st[w].ini,st[w].fim,`${w}, `);if(msg)break}}
     else if(q.type==="commits"){const l=S.a.compromissos_l||[];l.some((x,i)=>{const n=`Compromisso ${i+1}: `;
       if(!x.nome)msg=n+"dê um nome.";else if(!(x.dias||[]).length)msg=n+"escolha pelo menos um dia.";else if(!x.ini||!x.fim)msg=n+"preencha o início e o fim.";
       else if(toMin(x.fim)<=toMin(x.ini))msg=n+"o fim precisa ser depois do início (até 23:59).";else if(!x.tipo)msg=n+"escolha o tipo.";return !!msg});
@@ -1061,9 +1149,25 @@ function rQuiz(){
     }
     syncSection();
     if(q&&q.id==="dias_trab")reBox("semana_trab");
+    // mudou o local: os dias voltam a seguir a nova resposta; "Varia" abre a edição por dia
+    if(q&&q.id==="local_trab"){const st=S.a.semana_trab||{};Object.keys(st).forEach(d=>{st[d]=Object.assign({},st[d]);delete st[d].modo});save();reBox("trab");reBox("semana_trab");supEsconde()}
     if(q&&hasBox(q)&&e.target.value===trigOf(q)&&e.target.checked){const ob=$("#"+e.target.name+"_outro");if(ob)ob.focus()}
   });
   $("#qs").addEventListener("click",e=>{
+    const ia=e.target.closest("[data-intadd]"),ir=e.target.closest("[data-intrem]"),ed=e.target.closest("[data-editdias]");
+    if(ia||ir){syncSection();
+      const [esc0,idx]=(ir?ir.dataset.intrem:ia.dataset.intadd+":").split(":"),escopo=esc0;
+      if(escopo==="g"){const l=(S.a.intervalos||[]).slice();if(ia&&l.length<INT_MAX)l.push({ini:"",fim:""});if(ir)l.splice(+idx,1);S.a.intervalos=l}
+      else{const st=Object.assign({},S.a.semana_trab||{}),l=semTrab(S.a)[escopo].intervalos.slice();if(ia&&l.length<INT_MAX)l.push({ini:"",fim:""});if(ir)l.splice(+idx,1);st[escopo]=Object.assign({},st[escopo],{intervalos:l});S.a.semana_trab=st}
+      save();reBox("trab");reBox("semana_trab");
+      const box=document.querySelector(`[data-ilist="${escopo}"]`);
+      if(ia&&box&&box.lastElementChild)box.lastElementChild.querySelector(".int_ini").focus();
+      else{const b=document.querySelector(`[data-intadd="${escopo}"]`);if(b)b.focus()}
+      return}
+    if(ed){syncSection();S.a.editar_dias=!editaDias(S.a);save();reBox("trab");reBox("semana_trab");supEsconde();
+      const b=document.querySelector("[data-editdias]");if(b)b.focus();
+      if(S.a.editar_dias){const g=document.querySelector('[data-q="semana_trab"]');if(g)g.scrollIntoView({behavior:"smooth",block:"start"})}
+      return}
     const wm=e.target.closest("[data-wwmodo]");
     if(wm){wm.parentElement.querySelectorAll("[data-wwmodo]").forEach(x=>x.setAttribute("aria-pressed",String(x===wm)));syncSection();return}
     const ca=e.target.closest("[data-cadd]"),cr=e.target.closest("[data-crem]");
@@ -1084,6 +1188,8 @@ function rQuiz(){
     const nb=document.querySelector(`[data-q="${q.id}"] [data-cal="${act}"]`);if(nb)nb.focus();
   });
   $("#qs").addEventListener("input",e=>{
+    // mexeu no intervalo de um dia: aquele dia passa a ter intervalos próprios
+    const wr=e.target.closest(".wrow");if(wr&&e.target.closest("[data-ilist]"))wr.dataset.own="1";
     if(e.target.classList.contains("othertxt")){const c=$("#"+e.target.id+"_c");if(c){const r=100-e.target.value.length;c.textContent=r+"/100";c.classList.toggle("low",r<=10)}}
     if(e.target.type==="range"){
       const q=Q.find(x=>"q_"+x.id===e.target.id),v=Number(e.target.value),t=q.type==="scale"?v+" de 5":(v>=q.max?q.max+"+":v)+" anos";
@@ -1091,6 +1197,7 @@ function rQuiz(){
       const l=$("#"+e.target.id+"_v");l.textContent=t;l.classList.remove("unset");
     }
     syncSection();
+    if(e.target.closest('[data-ilist="g"]'))document.querySelectorAll('[data-q="semana_trab"] .wrow:not([data-own="1"])').forEach(r=>{const w=r.dataset.wd,box=r.querySelector("[data-ilist]");if(box)box.innerHTML=intRows(S.a.intervalos||[],w)});
     if(e.target.id==="q_trab_ini"||e.target.id==="q_trab_fim")document.querySelectorAll('[data-q="semana_trab"] .wrow').forEach(r=>{const st=(S.a.semana_trab||{})[r.dataset.wd]||{};if(!st.ini)r.querySelector(".ww_ini").value=S.a.trab_ini||"";if(!st.fim)r.querySelector(".ww_fim").value=S.a.trab_fim||""});
   });
   $("#back").onclick=()=>{syncSection();if(S.sec===0)go(S.plan?"plan":"welcome");else{S.sec--;go("quiz")}};
@@ -1138,6 +1245,32 @@ function openAccount(onDone){
 }
 
 /* ---------- conferência ---------- */
+// Conferência em dois quadros: a semana dia a dia (trabalho, intervalos, compromissos, tempo livre) e os dados do dia a dia.
+function revHTML(a,c){
+  const fil=(a.resp||[]).includes("Tenho filhos");
+  const maxLivre=Math.max(60,...WD.map(w=>c.dia[w].livre));
+  const linhas=WD.map(w=>{
+    const o=c.dia[w];
+    const principal=o.trab?`${o.modo==="Casa"?"Em casa":"Presencial"} · ${hhmm(o.ini)}–${hhmm(o.fim)}${o.noturno?" (vira a noite)":""}`:"Sem trabalho";
+    const hr=(a1,b1)=>`<span style="white-space:nowrap">${esc(a1)}–${esc(b1)}</span>`;
+    const det=[...(o.trab?o.intervalos.map(v=>`Intervalo ${hr(v[2],v[3])}`):[]),...o.comps.map(x=>`${esc(x.nome)} ${hr(x.inicio,x.fim)}`)];
+    return `<div class="wkrow${o.trab?"":" folga"}"><span class="wkd">${DABR(w)}</span><span class="wkt">${esc(principal)}${det.length?`<small>${det.join(" · ")}</small>`:""}</span><span class="wkl"><b>${dur(o.livre)}</b><span class="wkbar" aria-hidden="true"><i style="width:${Math.round(o.livre/maxLivre*100)}%"></i></span></span></div>`;
+  }).join("");
+  const desc=c.diasTrab.length?`O tempo livre já desconta, nos dias de trabalho: trabalho${hasDesloc(a)?", trajeto":""}, 30 min para se arrumar e casa${fil?" e filhos":""}${c.comps.length?". Também desconta os compromissos fixos":""}.`:c.comps.length?"O tempo livre já desconta os compromissos fixos.":"O tempo livre é o tempo em que você está acordado.";
+  const linha=(rotulo,valor,nota)=>`<div class="fact"><span>${esc(rotulo)}</span><b>${esc(valor)}</b>${nota?`<small>${esc(nota)}</small>`:""}</div>`;
+  const outros=[
+    linha("Sono em dias úteis",dur(c.sono),`Acorda ${hhmm(c.acorda)} · dorme ${c.dormeTxt}${c.sono<420?" · abaixo de 7h: o plano vai ajustar aos poucos":""}`),
+    c.fds&&c.diasLivres.length?linha("Sono nos dias sem trabalho",dur(c.fds.sono),`Acorda ${hhmm(c.fds.acorda)} · dorme ${c.fds.dormeTxt}`):"",
+    c.presDias.length&&hasDesloc(a)?linha("Trajeto nos dias presenciais",`${a.desloc_min} min`,`Sai ${hhmm(c.saida)} · chega ${hhmm(c.chegada)}${c.presDias.length<c.diasTrab.length?" · os dias em casa não têm trajeto":""}`):"",
+    c.podeLer?linha("Leitura possível no trajeto",dur(c.leitTrajetoSem)+"/sem","Metade do trajeto vira leitura"):"",
+    Number(a.leitura_meta)>0?linha(`Meta: ${a.leitura_meta} livros no ano`,dur(c.leitNecSem)+"/sem",`Cerca de ${PAG_H} páginas por hora e ${PAG_LIVRO} por livro`):"",
+    parseIso(a.inicio)?linha("Início do desafio",parseIso(a.inicio).toLocaleDateString("pt-BR",{weekday:"short",day:"2-digit",month:"2-digit"}),"O dia 7 e a avaliação caem 6 dias depois"):""
+  ].join("");
+  return `<div class="card"><p class="eyebrow">Sua semana</p><div class="dayhead"><span class="small muted">Trabalho ou estudo</span><span class="small muted">Tempo livre</span></div>
+    <div class="wk">${linhas}</div>
+    <p class="rvnote">${esc(desc)}</p></div>
+   <div class="card"><p class="eyebrow">Seu dia a dia</p><div class="facts">${outros}</div></div>`;
+}
 function rReview(){
   if(!S.T.quiz.concluidoEm){S.T.quiz.concluidoEm=Date.now();track("questionario_concluido")}
   // Se a data escolhida passou enquanto a pessoa estava fora, o desafio começa hoje.
@@ -1149,7 +1282,7 @@ function rReview(){
    <div class="card"><h2>Confira o que entendemos</h2><p class="small muted">Esses números foram calculados a partir dos seus horários. Se algo estiver estranho, volte e corrija antes de gerar o plano.</p></div>
    ${S.inicioAjustado?`<div class="note">A data que você escolheu para começar já passou. O desafio passa a começar hoje. Para escolher outra data, use "Corrigir respostas".</div>`:""}
    ${c.err.length?`<div class="alert"><b>Algo não fecha nos seus horários:</b><ul class="plain">${c.err.map(e=>`<li>${esc(e)}</li>`).join("")}</ul></div>`:""}
-   ${facts.length?`<div class="card"><div class="facts">${facts.map(f=>`<div class="fact"><span>${esc(f[0])}</span><b>${esc(f[1])}</b>${f[2]?`<small>${esc(f[2])}</small>`:""}</div>`).join("")}</div></div>`:""}
+   ${facts.length&&c.dia?revHTML(S.a,c):""}
    ${c.leitNecSem&&c.podeLer&&c.leitNecSem>c.leitTrajetoSem?`<div class="note">Sua meta de leitura pede mais tempo do que o trajeto oferece. O plano vai encaixar o restante ou propor uma meta menor.</div>`:""}
    <div class="row"><button class="btn ghost" id="edit">Corrigir respostas</button><button class="btn" id="gen" ${c.err.length?"disabled":""}>Gerar meu plano</button></div>
   </div>`;
@@ -1379,8 +1512,17 @@ let RF={open:false,edit:null,msg:"",ok:"",undo:null};
 function baseCtx(){const c=calc(PA());return c.sono==null||c.err.length?calc(EX_ANS):c}
 // Blocos do plano no dia + compromissos fixos informados que o plano não trouxe (rede de segurança: nunca somem da rotina).
 function sugFor(day){
-  const bl=(((S.plan.semana||[]).find(x=>dayKey(x.dia)===dayKey(day))||{}).blocos||[]).map(b=>Object.assign({},b,{lock:true}));
   const cd=ctxDay(baseCtx(),day);
+  let bl=(((S.plan.semana||[]).find(x=>dayKey(x.dia)===dayKey(day))||{}).blocos||[]).map(b=>Object.assign({},b,{lock:true}));
+  if((cd.intervalos||[]).length){
+    bl=bl.flatMap(b=>{
+      if(b.esfera!=="fixo")return[b];
+      const v=ivOf(b,cd);if(!v)return[b];
+      let partes=[[v[0],v[1]]];
+      for(const[is,ie]of cd.intervalos)partes=partes.flatMap(([s,e])=>is>s&&ie<e?[[s,is],[ie,e]]:is<=s&&ie>=e?[]:is>s&&is<e?[[s,is]]:ie>s&&ie<e?[[ie,e]]:[[s,e]]);
+      return partes.filter(([s,e])=>e-s>=5).map(([s,e])=>Object.assign({},b,{inicio:hhmm(s),fim:hhmm(e)}));
+    });
+  }
   (cd.comps||[]).filter(x=>!x.dentro).forEach(x=>{
     const tem=bl.some(b=>{const s=toMin(b.inicio),e=toMin(b.fim);return s!=null&&e!=null&&Math.abs(s-toMin(x.inicio))<=5&&Math.abs(e-toMin(x.fim))<=5});
     if(!tem)bl.push({inicio:x.inicio,fim:x.fim,atividade:x.nome,esfera:x.tipo==="Esporte"?"corpo":x.tipo==="Lazer"?"lazer":"fixo",lock:true,compromisso:true});
