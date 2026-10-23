@@ -2063,7 +2063,7 @@ if(!S.pago&&S.plan&&S.src==="ia"){
 (function(){
   if(!("IntersectionObserver" in window))return;
   if(window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches)return;
-  var SEL='main .screen > *, main .day, main .blk', LISTA='main .day, main .blk';
+  var SEL='main .screen > *, main .day, main .blk, main .q', LISTA='main .day, main .blk';
   var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add("in");io.unobserve(e.target)}})},{rootMargin:"0px 0px -6% 0px",threshold:0.06});
   function revelar(raiz){
     raiz.querySelectorAll(SEL).forEach(function(el){
