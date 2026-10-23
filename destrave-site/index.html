@@ -139,6 +139,8 @@ h2{font-size:1.75rem;font-weight:900;letter-spacing:-.025em}
 .try .no{background:var(--bad-soft)} .try .no i{background:var(--bad)}
 .try .yes{background:var(--ok-soft)} .try .yes i{background:var(--ok)}
 .try b{font-family:var(--mono);font-weight:500;font-size:.85rem}
+h2.semana{font-size:min(1.75rem, calc((100vw - 36px) / 10.6))}
+h2.semana .nw{white-space:nowrap}
 .rot-note{font-size:.95rem;color:var(--muted)}
 
 /* final */
@@ -198,7 +200,7 @@ footer{font-size:.8rem;color:var(--muted);text-align:center;line-height:1.45}
 
   <section>
     <p class="eyebrow">Sua rotina no app</p>
-    <h2>A sua semana inteira, descomplicada.</h2>
+    <h2 class="semana"><span class="nw">A sua semana inteira,</span><br>descomplicada.</h2>
     <p class="rot-note">O plano já vem encaixado na sua rotina. Quer acrescentar algo? O app confere se cabe antes de salvar.</p>
     <div class="rot" aria-label="Exemplo da tela de rotina do app">
       <span class="ex">Exemplo</span>
