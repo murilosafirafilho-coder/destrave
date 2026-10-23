@@ -419,7 +419,7 @@ const COMP_MAX=8;
 const compList=a=>(Array.isArray(a.compromissos_l)?a.compromissos_l:[]).filter(x=>x&&x.nome&&(x.dias||[]).length&&toMin(x.ini)!=null&&toMin(x.fim)!=null);
 const Q=[
  {id:"nome",s:"voce",type:"text",label:"Como podemos te chamar?",req:1,ph:"Seu primeiro nome"},
- {id:"email",s:"voce",type:"email",label:"Seu e-mail",help:"É o e-mail ligado ao seu plano e à sua compra.",req:1,ph:"nome@email.com",noAI:1},
+ {id:"email",s:"voce",type:"email",label:"Seu e-mail",help:"É o e-mail ligado ao seu plano e à sua compra, e o dos lembretes, se você ativar.",req:1,ph:"nome@email.com",noAI:1},
  {id:"telefone",s:"voce",type:"tel",label:"Seu telefone com DDD",req:1,ph:"(11) 98765-4321",noAI:1},
  {id:"idade",s:"voce",type:"range",label:"Sua idade",req:1,min:18,max:99},
  {id:"ocupacao",s:"voce",type:"radio",label:"Sua ocupação principal",req:1,other:1,opts:["CLT presencial","CLT híbrido ou remoto","Empresário","Autônomo ou freelancer","Estudante"]},
@@ -839,9 +839,9 @@ ABAS DO PLANO (barra no rodapé): Início, Objetivos, Rotina e Ajustes.
 - Início: o que está travando a pessoa, "Ver diagnóstico", "Ver plano" (as 4 categorias), metas dos 7 dias, e no fim "Refazer questionário" e "Ver minhas respostas".
 - Objetivos: em "Roteiro de 7 dias", tocar no dia abre as tarefas; marcar todas conclui o dia. Cada dia libera quando o anterior é concluído (o Dia 1 já vem liberado). O anel no topo mostra quantos dias foram concluídos. Em "Metas por categoria", "Ver metas completas" abre ações, o que medir e a meta de 7 dias, além de livros e revisão semanal.
 - Começar agora: aparece em Objetivos quando o Dia 1 é uma data futura. Muda o Dia 1 para hoje, com confirmação; o plano é refeito para os novos dias (até 2 minutos). Se a nova geração falhar ou for cancelada, o plano anterior continua.
-- Rotina: mostra a semana dia a dia. Itens com cadeado vêm do plano e não podem ser editados. "Adicionar à rotina" pede nome, dias, início, fim e tipo, e o app confere se cabe; se não couber, sugere o horário livre mais próximo. Itens adicionados têm "Editar" e "Remover" (com "Desfazer"). Ainda não existe integração com agenda nem lembretes automáticos.
-- Avaliação da semana: fica no fim de Objetivos. Abre no Dia 7 do desafio ou quando os 7 dias são concluídos.
-- Ajustes: tamanho do texto, tema claro ou escuro, "Adicionar à tela de início" (no iPhone: Safari, Compartilhar, Adicionar à Tela de Início; no Android: Chrome, instalar), conta, pagamento, termos, privacidade, "Apagar meus dados" (apaga tudo deste aparelho e do nosso registro, sem volta; o registro da compra é mantido) e "Falar com o suporte".
+- Rotina: mostra a semana dia a dia. Itens com cadeado vêm do plano e não podem ser editados. "Adicionar à rotina" pede nome, dias, início, fim e tipo, e o app confere se cabe; se não couber, sugere o horário livre mais próximo. Itens adicionados têm "Editar" e "Remover" (com "Desfazer"). "Integrar ao Google Agenda" mostra os eventos da semana; a integração ainda está sendo preparada e nada é enviado à agenda por enquanto.
+- Avaliação da semana + Brinde: fica no fim de Objetivos. Abre no Dia 7 do desafio ou quando os 7 dias são concluídos. O brinde está sendo preparado e será liberado depois da avaliação.
+- Ajustes: tamanho do texto, tema claro ou escuro, "Adicionar à tela de início" (no iPhone: Safari, Compartilhar, Adicionar à Tela de Início; no Android: Chrome, instalar), conta, pagamento, lembretes por notificação e e-mail com horário (ainda em preparação: o app só guarda a escolha), termos, privacidade, "Apagar meus dados" (apaga tudo deste aparelho e do nosso registro, sem volta; o registro da compra é mantido) e "Falar com o suporte".
 REFAZER QUESTIONÁRIO: as respostas anteriores aparecem preenchidas para editar. Ao gerar um novo plano, o progresso do plano anterior é zerado.
 DADOS: as respostas ficam neste navegador e uma cópia das respostas e do progresso fica guardada com a equipe do Destrave, conforme a Política de privacidade. E-mail e telefone não são enviados à IA.`;
 const SUP_REGRAS=`Você é o assistente de suporte do app "Destrave o Sucesso em 7 Dias". Sua única função é tirar dúvidas simples sobre como USAR o app.
@@ -1578,17 +1578,20 @@ function rSurvey(){
   if(locked){
     const faltam=Math.max(1,Math.ceil((unlockAt.getTime()-Date.now())/86400000));
     box.className="card";
-    box.innerHTML=`<div style="display:flex;gap:10px;align-items:center"><svg viewBox="0 0 16 16" style="width:20px;height:20px;color:var(--muted);flex:none" aria-hidden="true"><path fill="currentColor" d="M5 7V5a3 3 0 0 1 6 0v2h1a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1h1zm1.5 0h3V5a1.5 1.5 0 0 0-3 0v2z"/></svg><p class="eyebrow">Avaliação da semana</p></div><h3>Bloqueado até o fim do desafio</h3><p class="small">A avaliação abre no dia 7 do desafio, <b>${unlockAt.toLocaleDateString("pt-BR",{weekday:"long",day:"numeric",month:"numeric"})}</b>, quando você finalizar a semana. ${faltam===1?"Falta 1 dia.":`Faltam ${faltam} dias.`} Se concluir os 7 dias do roteiro antes disso, ela abre na hora.</p>`;
+    box.innerHTML=`<div style="display:flex;gap:10px;align-items:center"><svg viewBox="0 0 16 16" style="width:20px;height:20px;color:var(--muted);flex:none" aria-hidden="true"><path fill="currentColor" d="M5 7V5a3 3 0 0 1 6 0v2h1a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1h1zm1.5 0h3V5a1.5 1.5 0 0 0-3 0v2z"/></svg><p class="eyebrow">Avaliação da semana + Brinde</p></div><h3>Bloqueado até o fim do desafio</h3><p class="small">A avaliação abre no dia 7 do desafio, <b>${unlockAt.toLocaleDateString("pt-BR",{weekday:"long",day:"numeric",month:"numeric"})}</b>, quando você finalizar a semana. ${faltam===1?"Falta 1 dia.":`Faltam ${faltam} dias.`} Se concluir os 7 dias do roteiro antes disso, ela abre na hora.</p><button class="btn" id="gift" type="button">Resgatar Brinde</button><p class="note" id="giftmsg" role="status" hidden>Para acessar o seu brinde, você deve concluir o desafio. Não se chega ao topo sem escalar a montanha...</p>`;
+    $("#gift").onclick=()=>{$("#giftmsg").hidden=false};
     return;
   }
   if(S.survey){
     const s=S.survey;
     box.className="card";
     box.innerHTML=`<p class="eyebrow">Obrigado pela avaliação</p><h3>${s.n} de 7 dias concluídos</h3><p class="small">Semanas incompletas são comuns. Na revisão, corte uma tarefa em vez de acrescentar. Se quiser, conte para o suporte onde travou: é assim que melhoramos o desafio.</p>`;
+    box.insertAdjacentHTML("beforeend",`<button class="btn ghost" type="button" id="gift2">Resgatar Brinde</button>`);
+    $("#gift2").onclick=()=>openSheet("Seu brinde","<p>Seu brinde está sendo preparado. Ele será liberado aqui, nesta tela, assim que estiver pronto.</p>");
     return;
   }
   box.className="card";
-  box.innerHTML=`<p class="eyebrow">Avaliação da semana</p><h3>Como foi sua semana?</h3>
+  box.innerHTML=`<p class="eyebrow">Avaliação da semana + Brinde</p><h3>Como foi sua semana?</h3>
    <form id="sform" style="display:flex;flex-direction:column;gap:14px">
     <fieldset class="q"><legend>De 0 a 10, quanto você se sente menos travado do que há 7 dias?</legend><div class="scale">${[...Array(11).keys()].map(i=>`<label><input type="radio" name="score" id="sc${i}" value="${i}" aria-label="${i}"><span>${i}</span></label>`).join("")}</div></fieldset>
     <fieldset class="q"><legend>Qual categoria mais avançou?</legend><div class="opts">${SPH_IDS.map((k,i)=>`<label class="optc"><input type="radio" name="help" id="hp${i}" value="${k}"><span>${SPH[k]}</span></label>`).join("")}</div></fieldset>
@@ -1640,10 +1643,11 @@ function rRotina(pv){
    ${RF.ok?`<div class="okmsg"><span>${esc(RF.ok)}</span>${RF.undo?`<button class="mini" id="undo">Desfazer</button>`:""}</div>`:""}
    <div class="card"><div class="dayhead"><h3>Dia ${S.rday+1} · ${day}, ${dayDate(S.rday).toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})}</h3><span class="small muted">Livre: <b>${dur(free)}</b> entre ${hhmm(ctx.acorda)} e ${ctx.dormeTxt}</span></div>
     <div class="blocks">${list.map(b=>`<div class="blk s-${esc(b.esfera)}${b.lock?"":" mine"}"><time>${esc(b.inicio)}–${esc(b.fim)}</time><span>${esc(b.atividade)}</span>${b.lock?LOCK:`<span class="acts"><button class="mini" data-edit="${b.id}">Editar</button><button class="mini" data-del="${b.id}">Remover</button></span>`}</div>`).join("")||'<p class="small muted">Nenhum item neste dia.</p>'}</div>
-    ${RF.open?"":`<button class="btn ghost" id="addbtn">Adicionar à rotina</button>`}</div>
+    ${RF.open?"":`<button class="btn ghost" id="addbtn">Adicionar à rotina</button><button class="btn" id="gcal">Integrar ao Google Agenda</button>`}</div>
    <div class="card" id="addform" ${RF.open?"":"hidden"}></div>`;
   pv.querySelectorAll(".dchip").forEach(b=>b.onclick=()=>{S.rday=+b.dataset.d;RF.ok="";save();rPlan()});
   if($("#addbtn"))$("#addbtn").onclick=()=>{RF={open:true,edit:null,msg:"",ok:"",undo:null};rPlan();$("#rf_nome").focus()};
+  if($("#gcal"))$("#gcal").onclick=()=>{const ev=ORD().flatMap(d=>blocksFor(1,d).filter(b=>b.esfera!=="fixo").map(b=>({d,b})));openSheet("Integrar ao Google Agenda",`<p>Com a integração, você entra com sua conta Google e autoriza o acesso à sua agenda. Vamos criar ${ev.length} eventos com a sua semana, cada um com lembrete 10 minutos antes:</p><ul class="plain">${ev.slice(0,8).map(x=>`<li>${x.d.slice(0,3)} · ${esc(x.b.inicio)}–${esc(x.b.fim)} · ${esc(x.b.atividade)}</li>`).join("")}${ev.length>8?`<li>E mais ${ev.length-8}.</li>`:""}</ul><p class="muted">Trabalho e deslocamento ficam de fora. O que você adicionar ou editar depois também é atualizado na agenda.</p><p class="note">A integração com o Google Agenda está sendo preparada. Por enquanto, nada é enviado à sua agenda.</p>`)};
   if($("#undo"))$("#undo").onclick=()=>{const u=RF.undo;S.custom[u.w]=(S.custom[u.w]||[]).concat([u.item]);RF.ok="Item restaurado.";RF.undo=null;save();rPlan()};
   pv.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{
     const id=b.dataset.del,item=(S.custom[W]||[]).find(x=>x.id===id);
@@ -1971,6 +1975,12 @@ function rAjustes(pv){
    <div class="card"><p class="eyebrow">Pagamento</p>
     <div class="setrow"><div><b>Destrave o Sucesso em 7 Dias</b><br><span class="small muted">Pagamento único de ${PRECO_TXT}${S.pago&&S.pagoEm?` · pago em ${new Date(S.pagoEm).toLocaleDateString("pt-BR")}`:""}</span></div><span class="pill">${S.pago?"Pago":"Não comprado"}</span></div>
     <p class="small muted">Dúvidas sobre pagamento ou reembolso: toque em "Falar com o suporte", no fim desta tela. Reembolso em até 7 dias após a compra.</p></div>
+   <div class="card"><p class="eyebrow">Lembretes</p>
+    <div class="setrow"><label for="lpush"><b>Notificação no celular</b><br><span class="small muted">Aviso na tela com a tarefa do dia e o check-in.</span></label><input type="checkbox" role="switch" id="lpush" ${P.push?"checked":""}></div>
+    
+    <div class="setrow"><label for="lemb"><b>Lembrete por e-mail</b><br><span class="small muted">Com as tarefas do dia.</span></label><input type="checkbox" role="switch" id="lemb" ${P.lembrete?"checked":""}></div>
+    <div class="setrow" ${P.lembrete||P.push?"":"hidden"} id="lembh"><label for="lhora">Horário dos lembretes</label><input type="time" id="lhora" value="${esc(P.hora)}"></div>
+    <p class="note" id="pushnote" ${P.lembrete||P.push?"":"hidden"}>Os lembretes estão sendo preparados. Sua escolha e o horário ficam salvos e passam a valer assim que eles forem liberados. No iPhone, a notificação só vai funcionar com o app adicionado à tela de início.</p></div>
    <div class="card"><p class="eyebrow">Privacidade e termos</p>
     <button class="listbtn" id="terms">Termos de uso</button>
     <button class="listbtn" id="privacy">Política de privacidade</button>
@@ -1982,6 +1992,10 @@ function rAjustes(pv){
     <p class="small muted">Versão 1.0</p></div>`;
   pv.querySelectorAll("input[name=fs]").forEach(x=>x.onchange=()=>{S.prefs.fs=x.value;save();applyPrefs()});
   pv.querySelectorAll("input[name=th]").forEach(x=>x.onchange=()=>{S.prefs.theme=x.value;save();applyPrefs()});
+  const syncLemb=()=>{const on=S.prefs.lembrete||S.prefs.push;$("#lembh").hidden=!on;$("#pushnote").hidden=!on};
+  $("#lemb").onchange=e=>{S.prefs.lembrete=e.target.checked;save();syncLemb()};
+  $("#lpush").onchange=e=>{S.prefs.push=e.target.checked;save();syncLemb()};
+  $("#lhora").onchange=e=>{S.prefs.hora=e.target.value;save()};
 
   $("#terms").onclick=()=>openSheet("Termos de uso",TERMOS_HTML);
   $("#privacy").onclick=()=>openSheet("Política de privacidade",PRIVACIDADE_HTML);
