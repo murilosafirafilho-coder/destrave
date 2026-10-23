@@ -32,9 +32,6 @@ p{margin:0}
 .page{max-width:440px;margin:0 auto;display:flex;flex-direction:column;gap:20px;
   padding-block:20px 40px;padding-left:max(18px,env(safe-area-inset-left,0px));padding-right:max(18px,env(safe-area-inset-right,0px))}
 .logo{font:900 1rem var(--display);letter-spacing:-.02em;display:flex;align-items:center;gap:8px;color:var(--fg);text-decoration:none}
-.logo i{display:grid;grid-template-columns:1fr 1fr;gap:2px;width:18px;height:18px}
-.logo i b{border-radius:2px}
-.logo i b:nth-child(1){background:#3E63DD}.logo i b:nth-child(2){background:#1F9D63}.logo i b:nth-child(3){background:#7C4DDB}.logo i b:nth-child(4){background:#C99700}
 .hero{background:#152A80;color:#fff;border-radius:22px;padding:26px 22px 24px;display:flex;flex-direction:column;gap:14px;position:relative;overflow:hidden}
 .hero::after{content:"";position:absolute;right:-70px;top:-50px;width:210px;height:210px;border-radius:50%;border:38px solid rgba(255,255,255,.06)}
 .selo{align-self:flex-start;font:700 .72rem var(--body);letter-spacing:.14em;text-transform:uppercase;color:#C9D5FF;border:1px solid rgba(201,213,255,.45);border-radius:99px;padding:5px 11px}
@@ -42,8 +39,6 @@ p{margin:0}
 .hero p{color:#DCE3FF}
 .capa{display:flex;gap:14px;align-items:center;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);border-radius:14px;padding:12px}
 .doc{width:52px;height:68px;border-radius:6px;background:#fff;flex:none;display:flex;flex-direction:column;justify-content:space-between;padding:7px 6px;box-shadow:0 8px 20px -10px rgba(0,0,0,.5)}
-.doc i{display:grid;grid-template-columns:1fr 1fr;gap:1.5px;width:11px;height:11px}
-.doc i b{border-radius:1.5px}.doc i b:nth-child(1){background:#3E63DD}.doc i b:nth-child(2){background:#1F9D63}.doc i b:nth-child(3){background:#7C4DDB}.doc i b:nth-child(4){background:#C99700}
 .doc span{display:block;height:3px;border-radius:2px;background:#C9D5FF}.doc span+span{width:70%;margin-top:3px}
 .capa b{font:800 1rem var(--display);display:block}
 .capa small{color:#C9D5FF;font-size:.85rem}
@@ -71,7 +66,7 @@ footer{font-size:.8rem;color:var(--muted);text-align:center;line-height:1.45}
 </head>
 <body>
 <main class="page">
-  <a class="logo" href="/app/"><i aria-hidden="true"><b></b><b></b><b></b><b></b></i>Destrave o Sucesso em 7 Dias</a>
+  <a class="logo" href="/app/">Destrave o Sucesso em 7 Dias</a>
 
   <!-- Brinde liberado -->
   <section class="hero" id="ganhou" hidden>
@@ -79,7 +74,7 @@ footer{font-size:.8rem;color:var(--muted);text-align:center;line-height:1.45}
     <h1 id="titulo">Parabéns! Você ganhou um brinde.</h1>
     <p>Você chegou ao fim dos 7 dias. Para continuar destravando, preparamos um guia com 50 prompts prontos para usar na inteligência artificial.</p>
     <div class="capa">
-      <div class="doc" aria-hidden="true"><i><b></b><b></b><b></b><b></b></i><div><span></span><span></span></div></div>
+      <div class="doc" aria-hidden="true"><div><span></span><span></span><span></span></div><div><span></span><span></span></div></div>
       <div><b>50 Prompts para Destravar sua Vida</b><small>Guia em PDF · 11 páginas · 8 áreas</small></div>
     </div>
     <button class="btn" id="baixar" type="button">
