@@ -3,7 +3,9 @@
 const S = require("../lib/servidor.js");
 
 const EMAIL = /^[^\s@]{1,64}@[^\s@]{1,190}\.[^\s@]{2,}$/;
-const LINK_VALE_HORAS = 20; // reaproveita o mesmo link por algumas horas, em vez de criar um pedido a cada toque
+// Reaproveita o link só por pouco tempo e para o mesmo e-mail e preço.
+// Mudou o e-mail ou o preço, ou passou do prazo: cria um pagamento novo.
+const LINK_VALE_MIN = 30;
 
 module.exports = async function handler(req, res) {
   res.setHeader("cache-control", "no-store");
@@ -27,8 +29,9 @@ module.exports = async function handler(req, res) {
 
     // Reaproveita um link recente ainda não pago.
     const valor = S.preco();
-    const recente = pedidos.find(p => p.mp_link && (p.status === "criado" || p.status === "pendente") &&
-      S.centavos(p.valor) === S.centavos(valor) && Date.now() - new Date(p.criado_em).getTime() < LINK_VALE_HORAS * 3600e3);
+    const recente = pedidos.find(p => p.mp_link && p.status === "criado" &&
+      S.centavos(p.valor) === S.centavos(valor) && (p.email || null) === email &&
+      Date.now() - new Date(p.criado_em).getTime() < LINK_VALE_MIN * 60e3);
     if (recente) return res.status(200).json({ url: recente.mp_link, pedido: recente.id });
 
     const criado = await S.supa("pedidos", {
