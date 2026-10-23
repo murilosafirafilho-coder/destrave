@@ -30,6 +30,7 @@
   --bg:#EEF1F5; --surface:#FFFFFF; --sunk:#E3E8EF; --fg:#152030; --muted:#5B6878; --line:#D3DAE3;
   --accent:#2747C9; --accent-soft:#E2E8FB; --on-accent:#FFFFFF; --deep:#152A80;
   --ok:#1C7F52; --ok-soft:#DDF1E6; --bad:#B42318; --bad-soft:#FCE4E2;
+  --no-bg:#FDF1F0; --no-ink:#8F2F2A; --no-dot:#D9645C; --sim-bg:#EEF8F2; --sim-ink:#1E5E40; --sim-dot:#3FA374;
   --c-corpo:#DDF1E6; --c-foco:#EAE0FA; --c-sono:#F4E2D3;
   --k-tempo:#3E63DD; --k-corpo:#1F9D63; --k-foco:#7C4DDB; --k-lazer:#C99700;
   --display:"Schibsted Grotesk","Segoe UI",system-ui,sans-serif;
@@ -40,12 +41,14 @@
   --bg:#0E141C; --surface:#18212C; --sunk:#111922; --fg:#E7ECF2; --muted:#9AA7B6; --line:#2A3542;
   --accent:#7D97FF; --accent-soft:#1F2A4A; --on-accent:#0E141C; --deep:#1A2550;
   --ok:#5CCB93; --ok-soft:#163327; --bad:#E5534B; --bad-soft:#3B1916;
+  --no-bg:#2A1A1A; --no-ink:#F0B4AE; --no-dot:#C9574F; --sim-bg:#142A20; --sim-ink:#A8E0C2; --sim-dot:#3FA374;
   --c-corpo:#163327; --c-foco:#2C2245; --c-sono:#3A2618;
   --k-tempo:#7D97FF; --k-corpo:#4CC38A; --k-foco:#A98BF0; --k-lazer:#FFCC1A; color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#0E141C; --surface:#18212C; --sunk:#111922; --fg:#E7ECF2; --muted:#9AA7B6; --line:#2A3542;
   --accent:#7D97FF; --accent-soft:#1F2A4A; --on-accent:#0E141C; --deep:#1A2550;
   --ok:#5CCB93; --ok-soft:#163327; --bad:#E5534B; --bad-soft:#3B1916;
+  --no-bg:#2A1A1A; --no-ink:#F0B4AE; --no-dot:#C9574F; --sim-bg:#142A20; --sim-ink:#A8E0C2; --sim-dot:#3FA374;
   --c-corpo:#163327; --c-foco:#2C2245; --c-sono:#3A2618;
   --k-tempo:#7D97FF; --k-corpo:#4CC38A; --k-foco:#A98BF0; --k-lazer:#FFCC1A; color-scheme:dark}
 
@@ -96,9 +99,13 @@ h2{font-size:1.75rem;font-weight:900;letter-spacing:-.025em}
 
 /* dor */
 .pain{background:var(--surface);border-radius:20px;padding:22px;gap:14px;border:1px solid var(--line)}
-.pain ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
-.pain li{display:flex;gap:10px;align-items:flex-start;font-size:1.05rem}
-.pain li::before{content:"✕";font:700 .9rem var(--mono);color:var(--muted);margin-top:2px}
+.pain ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.pain li{display:flex;gap:10px;align-items:center;font-size:1rem;line-height:1.35;border-radius:12px;padding:10px 12px}
+.pain li::before{flex:none;display:grid;place-items:center;width:22px;height:22px;border-radius:50%;font:700 .72rem var(--body);color:#fff}
+.pain li.no{background:var(--no-bg);color:var(--no-ink)}
+.pain li.no::before{content:"✕";background:var(--no-dot)}
+.pain li.sim{background:var(--sim-bg);color:var(--sim-ink)}
+.pain li.sim::before{content:"✓";background:var(--sim-dot)}
 .pain .turn{background:#2747C9;color:#fff;border-radius:12px;padding:12px 14px;line-height:1.25}
 .pain .turn small{display:block;font:700 min(1.02rem, calc((min(100vw, 440px) - 126px) / 17.8)) var(--body);letter-spacing:.08em;text-transform:uppercase;opacity:.8;white-space:nowrap}
 .pain .turn b{font:800 .805rem var(--display)}
@@ -196,9 +203,11 @@ footer{font-size:.8rem;color:var(--muted);text-align:center;line-height:1.45}
   <section class="pain">
     <p class="turn"><small>Mais esforço é inútil sem o</small><b>planejamento estratégico adequado.</b></p>
     <ul>
-      <li>Três projetos começados e nenhum terminado</li>
-      <li>Noites que somem no celular</li>
-      <li>Treino "quando dá", que quase nunca dá</li>
+      <li class="no">Três projetos começados e nenhum terminado</li>
+      <li class="no">Noites que somem no celular</li>
+      <li class="no">Treino "quando dá", que quase nunca dá</li>
+      <li class="sim">Definir as prioridades da semana</li>
+      <li class="sim">Planejar o lazer para evitar procrastinação</li>
     </ul>
   </section>
 
