@@ -10,6 +10,12 @@ const NOME = "50-Prompts-para-Destravar-sua-Vida.pdf";
 module.exports = async function handler(req, res) {
   res.setHeader("cache-control", "no-store");
   const falha = (status, code, message) => { console.error(`[api/brinde] ${status} ${code}: ${message || code}`); return res.status(status).json({ code, message: message || code }); };
+  // GET = só confere se o arquivo está no servidor (não entrega nada).
+  if (req.method === "GET") {
+    let bytes = 0;
+    try { bytes = fs.statSync(ARQUIVO).size; } catch (e) {}
+    return res.status(200).json({ arquivo: bytes > 0, bytes });
+  }
   if (req.method !== "POST") return falha(405, "invalid_request", "Use POST.");
   const faltam = S.faltando(["SUPABASE_URL", "SUPABASE_ANON_KEY", "SUPABASE_SERVICE_ROLE_KEY"]);
   if (faltam.length) return falha(500, "nao_configurado", "Faltam " + faltam.join(", ") + " na Vercel.");
