@@ -172,6 +172,12 @@ footer{font-size:.8rem;color:var(--muted);text-align:center;line-height:1.45}
 .mbar.on{transform:none}
 .mbar .btn{max-width:440px;margin:0 auto;padding:14px}
 @media (prefers-reduced-motion:reduce){.mbar{transition:none}.btn:active{transform:none}}
+
+/* Revelar ao deslizar: só com animações permitidas no aparelho */
+@media (prefers-reduced-motion: no-preference){
+  .rv{opacity:0;transform:translateY(18px)}
+  .rv.in{opacity:1;transform:none;transition:opacity .6s cubic-bezier(.2,.7,.2,1),transform .6s cubic-bezier(.2,.7,.2,1)}
+}
 </style>
 </head>
 <body>
@@ -270,6 +276,28 @@ footer{font-size:.8rem;color:var(--muted);text-align:center;line-height:1.45}
   const upd=()=>bar.classList.toggle("on",!topVis&&!endVis);
   new IntersectionObserver(e=>{topVis=e[0].isIntersecting;upd()}).observe(top);
   new IntersectionObserver(e=>{endVis=e[0].isIntersecting;upd()}).observe(end);
+})();
+</script>
+
+<script>
+// Revela o conteúdo com suavidade conforme a página é deslizada.
+// O que já está na tela aparece na hora; o resto surge ao entrar na tela.
+(function(){
+  if(!("IntersectionObserver" in window))return;
+  if(window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches)return;
+  var SEL='.page > section, .page > footer, .pain li, .diff li, .blocks .blk, .try p, .checks li', LISTA='.pain li, .diff li, .blocks .blk, .try p, .checks li';
+  var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add("in");io.unobserve(e.target)}})},{rootMargin:"0px 0px -6% 0px",threshold:0.06});
+  function revelar(raiz){
+    raiz.querySelectorAll(SEL).forEach(function(el){
+      if(el.dataset.rv)return;el.dataset.rv="1";
+      var r=el.getBoundingClientRect();
+      if(!r.height||r.top<innerHeight*0.94)return;
+      if(el.matches(LISTA)){var i=Array.prototype.indexOf.call(el.parentNode.children,el);el.style.transitionDelay=Math.min(i,5)*70+"ms"}
+      el.classList.add("rv");io.observe(el);
+    });
+  }
+  window.destraveRevelar=revelar;
+  revelar(document);
 })();
 </script>
 </body>
