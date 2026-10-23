@@ -23,7 +23,7 @@
 })();
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@700;800;900&family=Source+Sans+3:wght@400;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;700;800;900&family=Source+Sans+3:wght@400;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
 <style>
 /* Layout: coluna única de celular (máx. 440px), 5 blocos curtos e botão fixo no rodapé; identidade do app */
 :root{
@@ -100,6 +100,7 @@ h2{font-size:1.75rem;font-weight:900;letter-spacing:-.025em}
 .pain li{display:flex;gap:10px;align-items:flex-start;font-size:1.05rem}
 .pain li::before{content:"✕";font:700 .9rem var(--mono);color:var(--muted);margin-top:2px}
 .pain .turn{font:800 1.15rem var(--display);line-height:1.25;background:#2747C9;color:#fff;border-radius:14px;padding:14px 16px}
+.pain .turn .leve{font-size:.85em;font-weight:400}
 
 /* ganhos */
 .wins{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
@@ -192,7 +193,7 @@ footer{font-size:.8rem;color:var(--muted);text-align:center;line-height:1.45}
   </section>
 
   <section class="pain">
-    <p class="turn">Mais esforço é inútil sem o planejamento estratégico adequado.</p>
+    <p class="turn">Mais esforço é inútil sem o <span class="leve">planejamento estratégico adequado.</span></p>
     <ul>
       <li>Três projetos começados e nenhum terminado</li>
       <li>Noites que somem no celular</li>
