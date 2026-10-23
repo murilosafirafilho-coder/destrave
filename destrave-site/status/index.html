@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Saúde do servidor · Destrave</title>
+<link rel="icon" href="/icone-192.png" type="image/png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@800&family=Source+Sans+3:wght@400;600;700&display=swap">
+<style>
+:root{--bg:#EEF1F5;--surface:#fff;--fg:#152030;--muted:#5B6878;--line:#D3DAE3;--accent:#2747C9;--ok:#1C7F52;--ok-soft:#DDF1E6;--bad:#B42318;--bad-soft:#FCE4E2;--warn:#8A5A00;--warn-soft:#FBF0D4}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#0F1520;--surface:#172131;--fg:#E8EDF4;--muted:#9AA7B8;--line:#2A3648;--accent:#7D97FF;--ok:#5FD39A;--ok-soft:#173527;--bad:#FF8A80;--bad-soft:#3A1C1A;--warn:#F2C25B;--warn-soft:#352A12}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:400 1rem/1.5 "Source Sans 3","Segoe UI",system-ui,sans-serif}
+main{max-width:640px;margin:0 auto;padding:28px 16px 48px}
+h1{font:800 1.6rem/1.2 "Schibsted Grotesk","Segoe UI",system-ui,sans-serif;margin:0 0 6px}
+p.sub{color:var(--muted);margin:0 0 18px}
+button{font:700 1rem "Source Sans 3",system-ui,sans-serif;background:var(--accent);color:#fff;border:0;border-radius:12px;padding:12px 18px;cursor:pointer}
+button:disabled{opacity:.6;cursor:wait}
+button:focus-visible{outline:3px solid var(--fg);outline-offset:2px}
+#out{margin-top:18px;display:grid;gap:10px}
+.row{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 14px;display:grid;grid-template-columns:auto 1fr;gap:4px 12px;align-items:start}
+.pill{font-size:.78rem;font-weight:700;border-radius:999px;padding:3px 10px;white-space:nowrap}
+.pill.ok{background:var(--ok-soft);color:var(--ok)}.pill.bad{background:var(--bad-soft);color:var(--bad)}.pill.warn{background:var(--warn-soft);color:var(--warn)}
+.row b{display:block}.row span.d{color:var(--muted);font-size:.92rem;grid-column:2}
+.when{color:var(--muted);font-size:.9rem;margin-top:12px}
+</style>
+</head>
+<body>
+<main>
+<h1>Saúde do servidor</h1>
+<p class="sub">Confere as chaves na Vercel, o banco no Supabase, a IA da Anthropic e a conta do Mercado Pago. Cada verificação faz duas chamadas curtas à IA.</p>
+<button id="go" type="button">Verificar agora</button>
+<div id="out" aria-live="polite"></div>
+<p class="when" id="when"></p>
+</main>
+<script>
+(function(){
+  var out=document.getElementById("out"),btn=document.getElementById("go"),when=document.getElementById("when");
+  function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
+  function tipo(v){v=String(v).toLowerCase();if(/^ok/.test(v))return"ok";if(/sem |aviso|usando/.test(v))return"warn";return"bad"}
+  function linha(nome,valor){var t=tipo(valor);var r=document.createElement("div");r.className="row";
+    r.innerHTML='<span class="pill '+t+'">'+(t==="ok"?"OK":t==="warn"?"Atenção":"Falha")+'</span><b>'+esc(nome)+'</b><span class="d">'+esc(valor)+'</span>';out.appendChild(r)}
+  async function verificar(){
+    btn.disabled=true;btn.textContent="Verificando…";out.innerHTML="";
+    try{
+      var r=await fetch("/api/diagnostico",{cache:"no-store"});var d=await r.json();
+      var v=d.variaveis||{};var faltando=Object.keys(v).filter(function(k){return v[k]!=="ok"});
+      linha("Chaves na Vercel",faltando.length?"faltando: "+faltando.join(", "):"ok ("+Object.keys(v).length+" de "+Object.keys(v).length+")");
+      if(d.supabase)linha("Banco (Supabase)",d.supabase);
+      if(d.anthropic){Object.keys(d.anthropic).forEach(function(k){linha("IA · "+(k==="planos"?"geração de planos":k==="suporte"?"suporte":k),d.anthropic[k])})}
+      if(d.pagamento){if(d.pagamento.mercado_pago)linha("Mercado Pago",d.pagamento.mercado_pago);if(d.pagamento.pedidos)linha("Tabela de pedidos",d.pagamento.pedidos);if(d.pagamento.site)linha("Endereço do site",d.pagamento.site)}
+      when.textContent="Verificado em "+new Date().toLocaleString("pt-BR")+".";
+    }catch(e){linha("Servidor","sem resposta do /api/diagnostico. Confira os registros na Vercel.");}
+    btn.disabled=false;btn.textContent="Verificar de novo";
+  }
+  btn.onclick=verificar;
+})();
+</script>
+</body>
+</html>

@@ -1,6 +1,11 @@
 {
   "redirects": [
     {
+      "source": "/status",
+      "destination": "/status/",
+      "permanent": false
+    },
+    {
       "source": "/app",
       "destination": "/app/",
       "permanent": false
