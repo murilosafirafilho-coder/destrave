@@ -6,6 +6,11 @@ const S = require("../lib/servidor.js");
 
 const ARQUIVO = path.join(__dirname, "..", "privado", "50-prompts-destrave.pdf");
 const NOME = "50-Prompts-para-Destravar-sua-Vida.pdf";
+// O desafio dura 7 dias no calendário: o brinde só sai a partir do 7º dia contado da data do pagamento
+// (data de São Paulo, pelo relógio do servidor; mudar o relógio do celular não adianta).
+const DIAS_MINIMOS = 6;
+const diaSP = ts => new Date(ts).toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" }); // AAAA-MM-DD
+const diasEntre = (a, b) => Math.round((Date.parse(b) - Date.parse(a)) / 864e5);
 
 module.exports = async function handler(req, res) {
   res.setHeader("cache-control", "no-store");
@@ -26,7 +31,15 @@ module.exports = async function handler(req, res) {
 
   try {
     const pedidos = await S.pedidosDe(usuario.id);
-    if (!pedidos.some(p => p.status === "pago")) return falha(403, "nao_pago", "O brinde é liberado para quem comprou o desafio.");
+    const pago = pedidos.find(p => p.status === "pago");
+    if (!pago) return falha(403, "nao_pago", "O brinde é liberado para quem comprou o desafio.");
+    const inicio = diaSP(pago.pago_em || pago.atualizado_em || pago.criado_em);
+    const passados = diasEntre(inicio, diaSP(Date.now()));
+    if (passados < DIAS_MINIMOS) {
+      const libera = new Date(Date.parse(inicio) + DIAS_MINIMOS * 864e5).toISOString().slice(0, 10);
+      res.setHeader("cache-control", "no-store");
+      return res.status(403).json({ code: "antes_do_dia7", message: "O brinde libera no fim do desafio.", liberaEm: libera });
+    }
   } catch (e) {
     return falha(502, "upstream_error", String(e && e.message || e));
   }

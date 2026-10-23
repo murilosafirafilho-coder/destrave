@@ -148,7 +148,7 @@ footer{font-size:.8rem;color:var(--muted);text-align:center;line-height:1.45}
     if(nome)$("#titulo").textContent="Parabéns, "+nome+"! Você ganhou um brinde.";
   }
 
-  var ERRO={nao_pago:"Não encontramos a compra do desafio nesta conta. Se você já pagou, fale com o suporte dentro do app.",not_granted:"Sua sessão expirou. Recarregue a página e tente de novo."};
+  var ERRO={antes_do_dia7:"Seu brinde libera no fim do desafio, no 7º dia. Volte aqui quando concluir a semana.",nao_pago:"Não encontramos a compra do desafio nesta conta. Se você já pagou, fale com o suporte dentro do app.",not_granted:"Sua sessão expirou. Recarregue a página e tente de novo."};
   var urlPdf=null;
   $("#baixar").onclick=async function(){
     var b=this;

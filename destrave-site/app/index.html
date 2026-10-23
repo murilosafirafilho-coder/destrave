@@ -797,6 +797,15 @@ const ORD=()=>ordemDias(S.start||Date.now());
 // Início do desafio do plano de exemplo: a próxima segunda-feira (ou hoje, se for segunda), porque ele foi escrito de segunda a domingo.
 function nextMonday(){const d=new Date();d.setHours(0,0,0,0);const add=(8-d.getDay())%7;d.setDate(d.getDate()+add);return d.getTime()}
 const dayDate=i=>{const d=new Date(S.start||Date.now());d.setHours(0,0,0,0);d.setDate(d.getDate()+i);return d};
+// Calendário do desafio: cada dia só libera na sua data. diaHoje() = 0 no Dia 1, 6 no Dia 7, 7+ depois do desafio.
+const diaHoje=()=>{const h=new Date();h.setHours(0,0,0,0);return Math.round((h.getTime()-dayDate(0).getTime())/864e5)};
+const diaLiberado=i=>diaHoje()>=i;
+// Data (meia-noite local) a partir da qual a avaliação e o brinde podem abrir: o Dia 7, e nunca antes de 6 dias depois do pagamento.
+function avaliacaoDesde(){
+  const d7=dayDate(6);
+  if(S.pagoEm){const p=new Date(S.pagoEm);p.setHours(0,0,0,0);p.setDate(p.getDate()+6);if(p>d7)return p}
+  return d7;
+}
 const WEEKS=1;
 const LOCK='<svg class="lock" viewBox="0 0 16 16" role="img" aria-label="Sugestão do plano"><path fill="currentColor" d="M5 7V5a3 3 0 0 1 6 0v2h1a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1h1zm1.5 0h3V5a1.5 1.5 0 0 0-3 0v2z"/></svg>';
 
@@ -837,10 +846,10 @@ CONFERÊNCIA E GERAÇÃO: antes de gerar, o app mostra os horários calculados; 
 PAGAMENTO: depois que o plano é gerado, abre a tela de compra. O plano é liberado após o pagamento único de R$ 47,90, por Pix ou cartão, no Mercado Pago (boleto não é aceito). Aprovado o pagamento, a pessoa volta sozinha ao app, na aba Início. Pix pendente: a tela confere sozinha; o botão "Já paguei" confere na hora. Não é assinatura, não há cobrança mensal. Reembolso em até 7 dias após a compra, pelo suporte. Pagamento não reconhecido, cobrança em dobro, reembolso, ou pagou e o plano não liberou: encaminhar para a equipe.
 ABAS DO PLANO (barra no rodapé): Início, Objetivos, Rotina e Ajustes.
 - Início: o que está travando a pessoa, "Ver diagnóstico", "Ver plano" (as 4 categorias), metas dos 7 dias, e no fim "Refazer questionário" e "Ver minhas respostas".
-- Objetivos: em "Roteiro de 7 dias", tocar no dia abre as tarefas; marcar todas conclui o dia. Cada dia libera quando o anterior é concluído (o Dia 1 já vem liberado). O anel no topo mostra quantos dias foram concluídos. Em "Metas por categoria", "Ver metas completas" abre ações, o que medir e a meta de 7 dias, além de livros e revisão semanal.
+- Objetivos: em "Roteiro de 7 dias", tocar no dia abre as tarefas; marcar todas conclui o dia. Cada dia libera na sua data no calendário (não dá para adiantar dias futuros) e depois que o dia anterior é concluído; um dia atrasado pode ser concluído depois. O anel no topo mostra quantos dias foram concluídos. Em "Metas por categoria", "Ver metas completas" abre ações, o que medir e a meta de 7 dias, além de livros e revisão semanal.
 - Começar agora: aparece em Objetivos quando o Dia 1 é uma data futura. Muda o Dia 1 para hoje, com confirmação; o plano é refeito para os novos dias (até 2 minutos). Se a nova geração falhar ou for cancelada, o plano anterior continua.
 - Rotina: mostra a semana dia a dia. Itens com cadeado vêm do plano e não podem ser editados. "Adicionar à rotina" pede nome, dias, início, fim e tipo, e o app confere se cabe; se não couber, sugere o horário livre mais próximo. Itens adicionados têm "Editar" e "Remover" (com "Desfazer"). "Integrar ao Google Agenda" mostra os eventos da semana; a integração ainda está sendo preparada e nada é enviado à agenda por enquanto.
-- Avaliação da semana + Brinde: fica no fim de Objetivos. Abre no Dia 7 do desafio ou quando os 7 dias são concluídos. O brinde é o guia "50 Prompts para Destravar sua Vida", em PDF. Ao enviar a avaliação, a pessoa vai para a página do brinde (endereço /brinde/) e baixa o arquivo; dá para voltar lá pelo botão "Resgatar Brinde". Se o download não funcionar: encaminhar para a equipe.
+- Avaliação da semana + Brinde: fica no fim de Objetivos. Abre no Dia 7, quando as tarefas desse dia são concluídas, ou a partir do dia seguinte ao Dia 7. Não abre antes do Dia 7, mesmo com tudo marcado. O brinde é o guia "50 Prompts para Destravar sua Vida", em PDF. Ao enviar a avaliação, a pessoa vai para a página do brinde (endereço /brinde/) e baixa o arquivo; dá para voltar lá pelo botão "Resgatar Brinde". Se o download não funcionar: encaminhar para a equipe.
 - Ajustes: tamanho do texto, tema claro ou escuro, "Adicionar à tela de início" (no iPhone: Safari, Compartilhar, Adicionar à Tela de Início; no Android: Chrome, instalar), conta, pagamento, lembretes por notificação e e-mail com horário (ainda em preparação: o app só guarda a escolha), termos, privacidade, "Apagar meus dados" (apaga tudo deste aparelho e do nosso registro, sem volta; o registro da compra é mantido) e "Falar com o suporte".
 REFAZER QUESTIONÁRIO: as respostas anteriores aparecem preenchidas para editar. Ao gerar um novo plano, o progresso do plano anterior é zerado.
 DADOS: as respostas ficam neste navegador e uma cópia das respostas e do progresso fica guardada com a equipe do Destrave, conforme a Política de privacidade. E-mail e telefone não são enviados à IA.`;
@@ -1454,7 +1463,7 @@ const sphName=id=>SPH[id]||({sono:"Sono",fixo:"Compromisso",outro:"Outro"}[id])|
 // Uma linha da caixa "Seu plano nas 4 categorias"
 const catRow=e=>`<div class="fact" style="grid-template-columns:auto 1fr;align-items:start"><span class="swatch s-${esc(e.id)}" style="margin-top:5px"></span><span><b style="font-family:var(--display);font-size:.95rem;text-align:left">${esc(sphName(e.id))}</b>${e.papel==="principal"?' <span class="tag main">Principal</span>':""}<br><span class="small muted">${esc(e.resumo)}</span></span></div>`;
 const bySphere=()=>(S.plan.esferas||[]).slice().sort((x,y)=>(y.papel==="principal")-(x.papel==="principal"));
-function dayDone(i){const d=S.plan.dias[i];if(!d)return false;const t=d.tarefas||[];return t.every((_,j)=>S.checks[i+"-"+j])}
+function dayDone(i){const d=S.plan.dias[i];if(!d||!diaLiberado(i))return false;const t=d.tarefas||[];return t.every((_,j)=>S.checks[i+"-"+j])}
 function rPlan(){
   const p=S.plan,tab=S.tab;
   main.innerHTML=`<div class="screen" id="pv"></div>`;
@@ -1558,13 +1567,15 @@ function rDays(){
   const ds=S.plan.dias||[],today=ds.findIndex((_,i)=>!dayDone(i));
   ds.forEach((d,i)=>{
     const comecou=(d.tarefas||[]).some((_,j)=>S.checks[i+"-"+j]);
-    const lockedDay=i>0&&!dayDone(i-1)&&!comecou;
+    const futuro=!diaLiberado(i);
+    const lockedDay=futuro||(i>0&&!dayDone(i-1)&&!comecou);
+    const quando=dayDate(i).toLocaleDateString("pt-BR",{weekday:"long",day:"2-digit",month:"2-digit"});
     const done=dayDone(i),open=S.open===i,tot=(d.tarefas||[]).reduce((s,x)=>s+(Number(x.minutos)||0),0);
     const el=document.createElement("div");el.className="day"+(done?" done":"")+(i===today?" today":"");
-    el.innerHTML=`<button type="button" aria-expanded="${open}"><span class="dnum">${done?"✓":i+1}</span><span class="dhead"><b>${esc(d.titulo)}</b><span>Dia ${i+1} · ${dayDate(i).toLocaleDateString("pt-BR",{weekday:"short",day:"2-digit",month:"2-digit"})} · ${tot?dur(tot)+" de tarefas":"tarefas rápidas"}${lockedDay?" · bloqueado":""}</span></span></button>`;
+    el.innerHTML=`<button type="button" aria-expanded="${open}"><span class="dnum">${done?"✓":i+1}</span><span class="dhead"><b>${esc(d.titulo)}</b><span>Dia ${i+1} · ${dayDate(i).toLocaleDateString("pt-BR",{weekday:"short",day:"2-digit",month:"2-digit"})} · ${tot?dur(tot)+" de tarefas":"tarefas rápidas"}${futuro?" · libera na data":lockedDay?" · bloqueado":""}</span></span></button>`;
     const body=document.createElement("div");body.className="dbody";body.hidden=!open;
-    body.innerHTML=`<p><b>Objetivo:</b> ${esc(d.objetivo)}</p>${lockedDay?`<p class="note">Conclua o dia ${i} para liberar a marcação destas tarefas.</p>`:""}<ul class="checks">${(d.tarefas||[]).map((t,j)=>`<li><label for="c${i}-${j}"><input type="checkbox" id="c${i}-${j}" data-k="${i}-${j}" ${S.checks[i+"-"+j]?"checked":""} ${lockedDay?"disabled":""}><span>${esc(t.texto)}</span><span class="t">${Number(t.minutos)?dur(t.minutos):""}</span></label></li>`).join("")}</ul><p class="result"><b>Concluído quando:</b> ${esc(d.concluido_quando)}</p>`;
-    body.querySelectorAll("input").forEach(x=>x.onchange=()=>{S.checks[x.dataset.k]=x.checked;save();track((x.checked?"marcou_":"desmarcou_")+x.dataset.k);rDays();rRing();rSurvey()});
+    body.innerHTML=`<p><b>Objetivo:</b> ${esc(d.objetivo)}</p>${futuro?`<p class="note">Este dia libera ${esc(quando)}. Cada dia do desafio abre na sua data, para você viver a semana de verdade.</p>`:lockedDay?`<p class="note">Conclua o dia ${i} para liberar a marcação destas tarefas.</p>`:""}<ul class="checks">${(d.tarefas||[]).map((t,j)=>`<li><label for="c${i}-${j}"><input type="checkbox" id="c${i}-${j}" data-k="${i}-${j}" ${S.checks[i+"-"+j]?"checked":""} ${lockedDay?"disabled":""}><span>${esc(t.texto)}</span><span class="t">${Number(t.minutos)?dur(t.minutos):""}</span></label></li>`).join("")}</ul><p class="result"><b>Concluído quando:</b> ${esc(d.concluido_quando)}</p>`;
+    body.querySelectorAll("input").forEach(x=>x.onchange=()=>{if(lockedDay){x.checked=!!S.checks[x.dataset.k];return}S.checks[x.dataset.k]=x.checked;save();track((x.checked?"marcou_":"desmarcou_")+x.dataset.k);rDays();rRing();rSurvey()});
     el.querySelector("button").onclick=()=>{S.open=open?null:i;save();rDays()};
     el.appendChild(body);wrap.appendChild(el);
   });
@@ -1572,13 +1583,14 @@ function rDays(){
 function rSurvey(){
   const box=$("#survey");if(!box)return;
   const n=(S.plan.dias||[]).filter((_,i)=>dayDone(i)).length;
-  const d0=new Date(S.start||Date.now());d0.setHours(0,0,0,0);
-  const unlockAt=new Date(d0.getTime());unlockAt.setDate(unlockAt.getDate()+6);
-  const locked=!S.survey&&!S.surveyUnlocked&&n<7&&Date.now()<unlockAt.getTime();
+  const unlockAt=avaliacaoDesde(),hoje0=new Date();hoje0.setHours(0,0,0,0);
+  const fimDia7=new Date(unlockAt.getTime());fimDia7.setDate(fimDia7.getDate()+1);
+  const chegouDia7=hoje0>=unlockAt,acabou=hoje0>=fimDia7;
+  const locked=!S.survey&&!(chegouDia7&&(dayDone(6)||acabou));
   if(locked){
-    const faltam=Math.max(1,Math.ceil((unlockAt.getTime()-Date.now())/86400000));
+    const faltam=Math.max(1,Math.round((unlockAt.getTime()-hoje0.getTime())/864e5));
     box.className="card";
-    box.innerHTML=`<div style="display:flex;gap:10px;align-items:center"><svg viewBox="0 0 16 16" style="width:20px;height:20px;color:var(--muted);flex:none" aria-hidden="true"><path fill="currentColor" d="M5 7V5a3 3 0 0 1 6 0v2h1a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1h1zm1.5 0h3V5a1.5 1.5 0 0 0-3 0v2z"/></svg><p class="eyebrow">Avaliação da semana + Brinde</p></div><h3>Bloqueado até o fim do desafio</h3><p class="small">A avaliação abre no dia 7 do desafio, <b>${unlockAt.toLocaleDateString("pt-BR",{weekday:"long",day:"numeric",month:"numeric"})}</b>, quando você finalizar a semana. ${faltam===1?"Falta 1 dia.":`Faltam ${faltam} dias.`} Se concluir os 7 dias do roteiro antes disso, ela abre na hora.</p><button class="btn" id="gift" type="button">Resgatar Brinde</button><p class="note" id="giftmsg" role="status" hidden>Para acessar o seu brinde, você deve concluir o desafio. Não se chega ao topo sem escalar a montanha...</p>`;
+    box.innerHTML=`<div style="display:flex;gap:10px;align-items:center"><svg viewBox="0 0 16 16" style="width:20px;height:20px;color:var(--muted);flex:none" aria-hidden="true"><path fill="currentColor" d="M5 7V5a3 3 0 0 1 6 0v2h1a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1h1zm1.5 0h3V5a1.5 1.5 0 0 0-3 0v2z"/></svg><p class="eyebrow">Avaliação da semana + Brinde</p></div><h3>Bloqueado até o fim do desafio</h3><p class="small">${unlockAt>dayDate(6)?`A avaliação abre <b>${unlockAt.toLocaleDateString("pt-BR",{weekday:"long",day:"numeric",month:"numeric"})}</b>, 7 dias depois da sua compra.`:`A avaliação abre no dia 7 do desafio, <b>${unlockAt.toLocaleDateString("pt-BR",{weekday:"long",day:"numeric",month:"numeric"})}</b>, quando você concluir as tarefas desse dia.`} ${chegouDia7?"<b>Hoje é o dia 7!</b> Conclua as tarefas de hoje para liberar a avaliação e o brinde.":faltam===1?"Falta 1 dia.":`Faltam ${faltam} dias.`} Os dias seguem o calendário: não dá para adiantar a semana.</p><button class="btn" id="gift" type="button">Resgatar Brinde</button><p class="note" id="giftmsg" role="status" hidden>Para acessar o seu brinde, você deve concluir o desafio. Não se chega ao topo sem escalar a montanha...</p>`;
     $("#gift").onclick=()=>{$("#giftmsg").hidden=false};
     return;
   }
@@ -1702,6 +1714,10 @@ function showAnswers(){const A=PA();openSheet(S.src==="exemplo"?"Respostas do pe
 
 // Instalado = aberto como app da tela de início (ou aviso de instalação do navegador)
 const isInstalled=()=>!!(S.installed||(window.matchMedia&&matchMedia("(display-mode: standalone)").matches)||navigator.standalone===true);
+// Virou o dia com o app aberto (ou o app voltou do segundo plano): redesenha para liberar o dia novo.
+let DIA_VISTO=new Date().toDateString();
+document.addEventListener("visibilitychange",()=>{if(document.hidden)return;const d=new Date().toDateString();if(d!==DIA_VISTO){DIA_VISTO=d;if(S.view==="plan")rPlan()}});
+setInterval(()=>{const d=new Date().toDateString();if(d!==DIA_VISTO&&!document.hidden){DIA_VISTO=d;if(S.view==="plan")rPlan()}},60000);
 window.addEventListener("appinstalled",()=>{S.installed=true;save();if(S.view==="plan"&&S.tab==="ajustes")rPlan()});
 
 /* ---------- Suporte ---------- */
