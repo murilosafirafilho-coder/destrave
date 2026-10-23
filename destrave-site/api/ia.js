@@ -7,6 +7,7 @@
 //   MODELO_PADRAO       opcional (padrão claude-sonnet-5-5): gera os planos
 //   MODELO_RAPIDO       opcional (padrão claude-haiku-5-5): responde o chat de suporte
 //   LIMITE_DIARIO       opcional (padrão 40): chamadas à IA por pessoa por dia
+//   LIMITE_SEM_PAGAMENTO opcional (padrão 6): pedidos de plano à IA antes de pagar (cada geração usa 1 ou 2)
 
 const MAX_ENTRADA = 60000;      // caracteres por pedido (o plano usa cerca de 11 mil)
 const MAX_SAIDA_JSON = 16000;   // tokens de resposta para o plano (inclui qualquer "pensamento" do modelo)
@@ -47,17 +48,19 @@ function montarMensagens(input) {
 
 const tamanho = msgs => msgs.reduce((n, m) => n + m.content.length, 0);
 
-async function contarUso(token) {
+// Registra o uso e devolve: chamadas de hoje, pedidos de plano feitos e se a pessoa já pagou.
+async function contarUso(token, tipo) {
   const url = process.env.SUPABASE_URL, anon = process.env.SUPABASE_ANON_KEY;
-  const r = await fetch(`${url}/rest/v1/rpc/usar_ia`, {
+  const r = await fetch(`${url}/rest/v1/rpc/registrar_uso`, {
     method: "POST",
     headers: { apikey: anon, authorization: `Bearer ${token}`, "content-type": "application/json" },
-    body: "{}",
+    body: JSON.stringify({ p_tipo: tipo }),
   });
   if (r.status >= 500) return { erro: "upstream_error" };
+  if (r.status === 404) { console.error("[api/ia] função registrar_uso não existe: rode o supabase.sql novo"); return { erro: "upstream_error" }; }
   if (!r.ok) return { erro: "not_granted" };
-  const n = await r.json();
-  return { n: Number(n) || 0 };
+  const d = (await r.json()) || {};
+  return { n: Number(d.hoje) || 0, geracoes: Number(d.geracoes) || 0, pago: d.pago === true };
 }
 
 module.exports = async function handler(req, res) {
@@ -77,13 +80,17 @@ module.exports = async function handler(req, res) {
   if (tamanho(mensagens) > MAX_ENTRADA) return falha(413, "prompt_too_large", "Pedido grande demais.");
 
   // Confere a sessão e conta o uso de hoje (a função usar_ia só aceita pessoas logadas).
+  const json = !!body.json;
   let uso;
-  try { uso = await contarUso(token); } catch (e) { return falha(502, "upstream_error", "Base de dados fora do ar."); }
+  try { uso = await contarUso(token, json ? "plano" : "chat"); } catch (e) { return falha(502, "upstream_error", "Base de dados fora do ar."); }
   if (uso.erro) return falha(uso.erro === "not_granted" ? 401 : 502, uso.erro);
   const limite = Number(process.env.LIMITE_DIARIO) || 40;
   if (uso.n > limite) return falha(429, "rate_limited", "Limite diário de uso da IA atingido.");
+  // Antes do pagamento, o número de planos gerados é limitado (custo da IA sem venda).
+  const limiteSemPagar = Number(process.env.LIMITE_SEM_PAGAMENTO) || 6;
+  if (json && !uso.pago && uso.geracoes > limiteSemPagar)
+    return falha(402, "limite_geracoes", "Limite de gerações antes do pagamento atingido.");
 
-  const json = !!body.json;
   const modelo = modeloPara(body.modelTier);
   const pedido = {
     model: modelo,

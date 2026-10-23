@@ -139,6 +139,32 @@
     },
   };
 
+  /* ---------- Pagamento (Mercado Pago, pelo servidor) ---------- */
+  async function chamarServidor(caminho, dados) {
+    var t = await token();
+    if (!t) throw erro("not_granted", "Sem sessão.");
+    var r;
+    try {
+      r = await fetch(caminho, {
+        method: "POST",
+        headers: { "content-type": "application/json", authorization: "Bearer " + t },
+        body: JSON.stringify(dados || {}),
+      });
+    } catch (e) {
+      throw erro("upstream_error", "Sem conexão com o servidor.");
+    }
+    var d = {};
+    try { d = await r.json(); } catch (e) {}
+    if (!r.ok) throw erro(d.code || "upstream_error", d.message);
+    return d;
+  }
+  window.destravePagamento = {
+    // Devolve { url } para abrir o Mercado Pago, ou { pago: true } se a compra já foi feita.
+    abrir: function (email) { return chamarServidor("/api/checkout", { email: email || "" }); },
+    // Devolve { pago, status, pagoEm }. status: pago | pendente | recusado | criado | estornado | sem_pedido
+    situacao: function (paymentId) { return chamarServidor("/api/pagamento", paymentId ? { payment_id: String(paymentId) } : {}); },
+  };
+
   window.claude = {
     use: async function (nome) {
       if (nome === "sample") return sample;

@@ -51,3 +51,72 @@ end $$;
 revoke all on function public.usar_ia() from public;
 revoke all on function public.usar_ia() from anon;
 grant execute on function public.usar_ia() to authenticated;
+
+-- =====================================================================
+-- 3) PAGAMENTO (Mercado Pago). Pode rodar de novo sem problema.
+-- =====================================================================
+
+-- Pedidos de compra. A pessoa só LÊ os próprios pedidos; quem cria e altera é o servidor
+-- (com a chave service_role, que fica só na Vercel). Assim ninguém se marca como "pago" sozinho.
+-- Se a conta for apagada, o pedido fica guardado (registro fiscal), só perde o vínculo.
+create table if not exists public.pedidos (
+  id            uuid primary key default gen_random_uuid(),
+  usuario       uuid references auth.users (id) on delete set null,
+  status        text not null default 'criado'
+                check (status in ('criado', 'pendente', 'pago', 'recusado', 'estornado')),
+  valor         numeric(10, 2) not null check (valor > 0),
+  email         text,
+  mp_preferencia text,
+  mp_link       text,
+  mp_pagamento  text,
+  metodo        text,
+  criado_em     timestamptz not null default now(),
+  atualizado_em timestamptz not null default now(),
+  pago_em       timestamptz
+);
+create index if not exists pedidos_usuario on public.pedidos (usuario, criado_em desc);
+create unique index if not exists pedidos_mp_pagamento on public.pedidos (mp_pagamento) where mp_pagamento is not null;
+alter table public.pedidos enable row level security;
+drop policy if exists "pedidos: ler os proprios" on public.pedidos;
+create policy "pedidos: ler os proprios" on public.pedidos for select to authenticated
+  using (usuario = auth.uid());
+revoke insert, update, delete on public.pedidos from anon, authenticated;
+
+-- Quantas vezes cada pessoa pediu um plano à IA (para limitar o custo antes do pagamento).
+create table if not exists public.geracoes (
+  usuario uuid primary key references auth.users (id) on delete cascade,
+  total   int not null default 0
+);
+alter table public.geracoes enable row level security;
+
+-- O servidor chama com a sessão da pessoa, a cada uso da IA.
+-- p_tipo = 'plano' (gerar ou corrigir o plano) ou 'chat' (suporte).
+-- Devolve: chamadas de hoje, total de pedidos de plano e se a pessoa já pagou.
+create or replace function public.registrar_uso(p_tipo text) returns jsonb
+language plpgsql security definer set search_path = public as $$
+declare
+  uid uuid := auth.uid();
+  hoje int;
+  g int := 0;
+  pago boolean;
+begin
+  if uid is null then
+    raise exception 'sem sessão' using errcode = '28000';
+  end if;
+  insert into public.uso_ia (usuario, dia, chamadas)
+  values (uid, (now() at time zone 'America/Sao_Paulo')::date, 1)
+  on conflict (usuario, dia) do update set chamadas = public.uso_ia.chamadas + 1
+  returning chamadas into hoje;
+  if p_tipo = 'plano' then
+    insert into public.geracoes (usuario, total) values (uid, 1)
+    on conflict (usuario) do update set total = public.geracoes.total + 1
+    returning total into g;
+  else
+    select coalesce((select total from public.geracoes where usuario = uid), 0) into g;
+  end if;
+  select exists (select 1 from public.pedidos where usuario = uid and status = 'pago') into pago;
+  return jsonb_build_object('hoje', hoje, 'geracoes', g, 'pago', pago);
+end $$;
+revoke all on function public.registrar_uso(text) from public;
+revoke all on function public.registrar_uso(text) from anon;
+grant execute on function public.registrar_uso(text) to authenticated;
