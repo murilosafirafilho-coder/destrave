@@ -99,8 +99,9 @@ h2{font-size:1.75rem;font-weight:900;letter-spacing:-.025em}
 .pain ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
 .pain li{display:flex;gap:10px;align-items:flex-start;font-size:1.05rem}
 .pain li::before{content:"✕";font:700 .9rem var(--mono);color:var(--muted);margin-top:2px}
-.pain .turn{font:800 1.15rem var(--display);line-height:1.25;background:#2747C9;color:#fff;border-radius:14px;padding:14px 16px}
-.pain .turn .leve{font-size:.85em;font-weight:400}
+.pain .turn{background:#2747C9;color:#fff;border-radius:12px;padding:12px 14px;line-height:1.25}
+.pain .turn small{display:block;font:700 min(1.02rem, calc((min(100vw, 440px) - 126px) / 17.8)) var(--body);letter-spacing:.08em;text-transform:uppercase;opacity:.8;white-space:nowrap}
+.pain .turn b{font:800 .805rem var(--display)}
 
 /* ganhos */
 .wins{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
@@ -193,7 +194,7 @@ footer{font-size:.8rem;color:var(--muted);text-align:center;line-height:1.45}
   </section>
 
   <section class="pain">
-    <p class="turn">Mais esforço é inútil sem o <span class="leve">planejamento estratégico adequado.</span></p>
+    <p class="turn"><small>Mais esforço é inútil sem o</small><b>planejamento estratégico adequado.</b></p>
     <ul>
       <li>Três projetos começados e nenhum terminado</li>
       <li>Noites que somem no celular</li>
