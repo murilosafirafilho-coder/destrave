@@ -98,16 +98,16 @@ h2{font-size:1.75rem;font-weight:900;letter-spacing:-.025em}
 .cap{font-size:.85rem;color:var(--muted);text-align:center}
 
 /* dor */
-.pain{background:var(--surface);border-radius:20px;padding:22px;gap:14px;border:1px solid var(--line)}
-.pain ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
-.pain li{display:flex;gap:10px;align-items:center;font-size:1rem;line-height:1.35;border-radius:12px;padding:10px 12px}
+.pain{background:var(--surface);border-radius:20px;padding:0;gap:0;border:1px solid var(--line);overflow:hidden;box-shadow:0 18px 40px -30px rgba(21,32,48,.45)}
+.pain ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:0}
+.pain li{display:flex;gap:12px;align-items:center;font-size:1rem;line-height:1.35;padding:13px 18px;border-top:1px solid var(--line)}
 .pain li::before{flex:none;display:grid;place-items:center;width:22px;height:22px;border-radius:50%;font:700 .72rem var(--body);color:#fff}
 .pain li.no{background:var(--no-bg);color:var(--no-ink)}
 .pain li.no::before{content:"✕";background:var(--no-dot)}
 .pain li.sim{background:var(--sim-bg);color:var(--sim-ink)}
 .pain li.sim::before{content:"✓";background:var(--sim-dot)}
-.pain .turn{background:#2747C9;color:#fff;border-radius:12px;padding:12px 14px;line-height:1.25}
-.pain .turn small{display:block;font:700 min(1.02rem, calc((min(100vw, 440px) - 126px) / 17.8)) var(--body);letter-spacing:.08em;text-transform:uppercase;opacity:.8;white-space:nowrap}
+.pain .turn{background:#2747C9;color:#fff;padding:16px 18px;line-height:1.25}
+.pain .turn small{display:block;font:700 min(1.02rem, calc((min(100vw, 440px) - 74px) / 17.8)) var(--body);letter-spacing:.08em;text-transform:uppercase;opacity:.8;white-space:nowrap}
 .pain .turn b{font:800 .805rem var(--display)}
 
 /* ganhos */
