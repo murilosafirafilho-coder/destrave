@@ -1406,6 +1406,8 @@ async function pagar(){
     if(!r||!/^https:\/\//.test(String(r.url||"")))throw {code:"upstream_error"};
     tlog("abriu_pagamento");save();
     location.href=r.url;
+    // Se a página do Mercado Pago não abrir, o botão volta a funcionar.
+    setTimeout(()=>{if(COMPRA.estado==="abrindo"){COMPRA.estado="";if(S.view==="compra")rCompra()}},15000);
   }catch(e){
     COMPRA.estado="erro";COMPRA.msg=PAG_ERR[e&&e.code]||"Não foi possível abrir o pagamento agora. Tente de novo em instantes.";
     if(S.view==="compra")rCompra();
@@ -1431,6 +1433,13 @@ async function verificarPagamento(paymentId,silencioso){
   }
   if(S.view==="compra")rCompra();
 }
+// Quem volta do Mercado Pago pelo botão "voltar" do navegador recebe a página guardada na memória,
+// com o botão ainda travado em "Abrindo o Mercado Pago…". Aqui ela é destravada e o pagamento é conferido.
+window.addEventListener("pageshow",ev=>{
+  if(!ev.persisted)return;
+  if(COMPRA.estado==="abrindo"||COMPRA.estado==="verificando")COMPRA.estado="";
+  if(S.view==="compra"){rCompra();verificarPagamento("",true)}
+});
 // Pix pendente: confere a cada 5 segundos por até 5 minutos.
 function agendarConferencia(paymentId){
   clearTimeout(COMPRA.timer);

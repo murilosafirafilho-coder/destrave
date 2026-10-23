@@ -143,15 +143,18 @@
   async function chamarServidor(caminho, dados) {
     var t = await token();
     if (!t) throw erro("not_granted", "Sem sessão.");
-    var r;
+    var r, ctl = new AbortController(), timer = setTimeout(function () { ctl.abort(); }, 25000);
     try {
       r = await fetch(caminho, {
         method: "POST",
         headers: { "content-type": "application/json", authorization: "Bearer " + t },
         body: JSON.stringify(dados || {}),
+        signal: ctl.signal,
       });
     } catch (e) {
       throw erro("upstream_error", "Sem conexão com o servidor.");
+    } finally {
+      clearTimeout(timer);
     }
     var d = {};
     try { d = await r.json(); } catch (e) {}
