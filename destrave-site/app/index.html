@@ -840,7 +840,7 @@ ABAS DO PLANO (barra no rodapé): Início, Objetivos, Rotina e Ajustes.
 - Objetivos: em "Roteiro de 7 dias", tocar no dia abre as tarefas; marcar todas conclui o dia. Cada dia libera quando o anterior é concluído (o Dia 1 já vem liberado). O anel no topo mostra quantos dias foram concluídos. Em "Metas por categoria", "Ver metas completas" abre ações, o que medir e a meta de 7 dias, além de livros e revisão semanal.
 - Começar agora: aparece em Objetivos quando o Dia 1 é uma data futura. Muda o Dia 1 para hoje, com confirmação; o plano é refeito para os novos dias (até 2 minutos). Se a nova geração falhar ou for cancelada, o plano anterior continua.
 - Rotina: mostra a semana dia a dia. Itens com cadeado vêm do plano e não podem ser editados. "Adicionar à rotina" pede nome, dias, início, fim e tipo, e o app confere se cabe; se não couber, sugere o horário livre mais próximo. Itens adicionados têm "Editar" e "Remover" (com "Desfazer"). "Integrar ao Google Agenda" mostra os eventos da semana; a integração ainda está sendo preparada e nada é enviado à agenda por enquanto.
-- Avaliação da semana + Brinde: fica no fim de Objetivos. Abre no Dia 7 do desafio ou quando os 7 dias são concluídos. O brinde está sendo preparado e será liberado depois da avaliação.
+- Avaliação da semana + Brinde: fica no fim de Objetivos. Abre no Dia 7 do desafio ou quando os 7 dias são concluídos. O brinde é o guia "50 Prompts para Destravar sua Vida", em PDF. Ao enviar a avaliação, a pessoa vai para a página do brinde (endereço /brinde/) e baixa o arquivo; dá para voltar lá pelo botão "Resgatar Brinde". Se o download não funcionar: encaminhar para a equipe.
 - Ajustes: tamanho do texto, tema claro ou escuro, "Adicionar à tela de início" (no iPhone: Safari, Compartilhar, Adicionar à Tela de Início; no Android: Chrome, instalar), conta, pagamento, lembretes por notificação e e-mail com horário (ainda em preparação: o app só guarda a escolha), termos, privacidade, "Apagar meus dados" (apaga tudo deste aparelho e do nosso registro, sem volta; o registro da compra é mantido) e "Falar com o suporte".
 REFAZER QUESTIONÁRIO: as respostas anteriores aparecem preenchidas para editar. Ao gerar um novo plano, o progresso do plano anterior é zerado.
 DADOS: as respostas ficam neste navegador e uma cópia das respostas e do progresso fica guardada com a equipe do Destrave, conforme a Política de privacidade. E-mail e telefone não são enviados à IA.`;
@@ -1587,7 +1587,7 @@ function rSurvey(){
     box.className="card";
     box.innerHTML=`<p class="eyebrow">Obrigado pela avaliação</p><h3>${s.n} de 7 dias concluídos</h3><p class="small">Semanas incompletas são comuns. Na revisão, corte uma tarefa em vez de acrescentar. Se quiser, conte para o suporte onde travou: é assim que melhoramos o desafio.</p>`;
     box.insertAdjacentHTML("beforeend",`<button class="btn ghost" type="button" id="gift2">Resgatar Brinde</button>`);
-    $("#gift2").onclick=()=>openSheet("Seu brinde","<p>Seu brinde está sendo preparado. Ele será liberado aqui, nesta tela, assim que estiver pronto.</p>");
+    $("#gift2").onclick=()=>{location.href="/brinde/"};
     return;
   }
   box.className="card";
@@ -1601,7 +1601,9 @@ function rSurvey(){
   $("#sform").onsubmit=e=>{e.preventDefault();const sc=document.querySelector("input[name=score]:checked");
     if(!sc){$("#serr").hidden=false;$("#serr").textContent="Escolha uma nota de 0 a 10 para enviar.";return}
     const h=document.querySelector("input[name=help]:checked");
-    S.survey={score:+sc.value,n,help:h?h.value:"",stuck:$("#stuck").value};S.T.avaliacaoEm=Date.now();track("enviou_avaliacao");rSurvey()};
+    S.survey={score:+sc.value,n,help:h?h.value:"",stuck:$("#stuck").value};S.T.avaliacaoEm=Date.now();track("enviou_avaliacao");flush();rSurvey();
+    // Avaliação enviada: o cliente vai direto para a página do brinde.
+    if(S.pago){const box=$("#survey");if(box)box.insertAdjacentHTML("afterbegin",`<div class="okmsg" role="status"><span>Avaliação enviada! Abrindo o seu brinde…</span></div>`);setTimeout(()=>{location.href="/brinde/"},1500)}};
 }
 
 /* ---------- aba Rotina ---------- */

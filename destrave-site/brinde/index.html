@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Seu brinde · Destrave o Sucesso em 7 Dias</title>
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#152A80">
+<link rel="icon" href="/icone-192.png" type="image/png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@700;800;900&family=Source+Sans+3:wght@400;600;700&display=swap">
+<script src="/config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="/ponte.js"></script>
+<style>
+:root{
+  --bg:#EEF1F5; --surface:#FFFFFF; --sunk:#E3E8EF; --fg:#152030; --muted:#5B6878; --line:#D3DAE3;
+  --accent:#2747C9; --accent-soft:#E2E8FB; --on-accent:#FFFFFF; --deep:#152A80; --ok:#1C7F52; --ok-soft:#DDF1E6; --bad:#B42318; --bad-soft:#FCE4E2;
+  --display:"Schibsted Grotesk","Segoe UI",system-ui,sans-serif; --body:"Source Sans 3","Segoe UI",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0E141C; --surface:#18212C; --sunk:#111922; --fg:#E7ECF2; --muted:#9AA7B6; --line:#2A3542;
+  --accent:#7D97FF; --accent-soft:#1F2A4A; --on-accent:#0E141C; --deep:#1A2550; --ok:#5CCB93; --ok-soft:#163327; --bad:#E5534B; --bad-soft:#3B1916; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0E141C; --surface:#18212C; --sunk:#111922; --fg:#E7ECF2; --muted:#9AA7B6; --line:#2A3542;
+  --accent:#7D97FF; --accent-soft:#1F2A4A; --on-accent:#0E141C; --deep:#1A2550; --ok:#5CCB93; --ok-soft:#163327; --bad:#E5534B; --bad-soft:#3B1916; color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--body);font-size:1.0625rem;line-height:1.5}
+h1,h2,h3{font-family:var(--display);margin:0;line-height:1.08;text-wrap:balance}
+p{margin:0}
+.page{max-width:440px;margin:0 auto;display:flex;flex-direction:column;gap:20px;
+  padding-block:20px 40px;padding-left:max(18px,env(safe-area-inset-left,0px));padding-right:max(18px,env(safe-area-inset-right,0px))}
+.logo{font:900 1rem var(--display);letter-spacing:-.02em;display:flex;align-items:center;gap:8px;color:var(--fg);text-decoration:none}
+.logo i{display:grid;grid-template-columns:1fr 1fr;gap:2px;width:18px;height:18px}
+.logo i b{border-radius:2px}
+.logo i b:nth-child(1){background:#3E63DD}.logo i b:nth-child(2){background:#1F9D63}.logo i b:nth-child(3){background:#7C4DDB}.logo i b:nth-child(4){background:#C99700}
+.hero{background:#152A80;color:#fff;border-radius:22px;padding:26px 22px 24px;display:flex;flex-direction:column;gap:14px;position:relative;overflow:hidden}
+.hero::after{content:"";position:absolute;right:-70px;top:-50px;width:210px;height:210px;border-radius:50%;border:38px solid rgba(255,255,255,.06)}
+.selo{align-self:flex-start;font:700 .72rem var(--body);letter-spacing:.14em;text-transform:uppercase;color:#C9D5FF;border:1px solid rgba(201,213,255,.45);border-radius:99px;padding:5px 11px}
+.hero h1{font-size:2.15rem;font-weight:900;letter-spacing:-.035em}
+.hero p{color:#DCE3FF}
+.capa{display:flex;gap:14px;align-items:center;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);border-radius:14px;padding:12px}
+.doc{width:52px;height:68px;border-radius:6px;background:#fff;flex:none;display:flex;flex-direction:column;justify-content:space-between;padding:7px 6px;box-shadow:0 8px 20px -10px rgba(0,0,0,.5)}
+.doc i{display:grid;grid-template-columns:1fr 1fr;gap:1.5px;width:11px;height:11px}
+.doc i b{border-radius:1.5px}.doc i b:nth-child(1){background:#3E63DD}.doc i b:nth-child(2){background:#1F9D63}.doc i b:nth-child(3){background:#7C4DDB}.doc i b:nth-child(4){background:#C99700}
+.doc span{display:block;height:3px;border-radius:2px;background:#C9D5FF}.doc span+span{width:70%;margin-top:3px}
+.capa b{font:800 1rem var(--display);display:block}
+.capa small{color:#C9D5FF;font-size:.85rem}
+.btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;font:800 1.08rem var(--display);text-decoration:none;background:var(--accent);color:var(--on-accent);border:0;border-radius:14px;padding:16px 20px;cursor:pointer;min-height:52px}
+.hero .btn{background:#fff;color:#152A80}
+.btn:disabled{opacity:.6;cursor:default}
+.btn:focus-visible{outline:3px solid var(--fg);outline-offset:3px}
+.btn.ghost{background:transparent;color:var(--accent);border:1.5px solid var(--line)}
+.btn svg{width:18px;height:18px;flex:none}
+.msg{font-size:.95rem;border-radius:12px;padding:12px 14px}
+.msg.ok{background:var(--ok-soft);color:var(--fg)}
+.msg.bad{background:var(--bad-soft);color:var(--fg)}
+.hero .msg{background:rgba(255,255,255,.12);color:#fff}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:20px;display:flex;flex-direction:column;gap:12px}
+.eyebrow{font:700 .76rem var(--body);letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+.card h2{font-size:1.35rem;font-weight:800;letter-spacing:-.02em}
+.areas{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.areas li{display:flex;gap:8px;align-items:center;font-size:.93rem;background:var(--sunk);border-radius:10px;padding:9px 10px;line-height:1.2}
+.areas i{width:9px;height:9px;border-radius:3px;flex:none}
+.muted{color:var(--muted)}
+.small{font-size:.9rem}
+footer{font-size:.8rem;color:var(--muted);text-align:center;line-height:1.45}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<main class="page">
+  <a class="logo" href="/app/"><i aria-hidden="true"><b></b><b></b><b></b><b></b></i>Destrave o Sucesso em 7 Dias</a>
+
+  <!-- Brinde liberado -->
+  <section class="hero" id="ganhou" hidden>
+    <p class="selo">Desafio concluído</p>
+    <h1 id="titulo">Parabéns! Você ganhou um brinde.</h1>
+    <p>Você chegou ao fim dos 7 dias. Para continuar destravando, preparamos um guia com 50 prompts prontos para usar na inteligência artificial.</p>
+    <div class="capa">
+      <div class="doc" aria-hidden="true"><i><b></b><b></b><b></b><b></b></i><div><span></span><span></span></div></div>
+      <div><b>50 Prompts para Destravar sua Vida</b><small>Guia em PDF · 11 páginas · 8 áreas</small></div>
+    </div>
+    <button class="btn" id="baixar" type="button">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3v10M5.5 8.5 10 13l4.5-4.5M4 17h12"/></svg>
+      Baixar meu brinde</button>
+    <p class="msg" id="status" role="status" hidden></p>
+  </section>
+
+  <!-- Falta a avaliação -->
+  <section class="card" id="falta" hidden>
+    <p class="eyebrow">Quase lá</p>
+    <h2>Seu brinde espera por você no fim do desafio</h2>
+    <p class="muted">Ele é liberado quando você conclui os 7 dias e envia a avaliação da semana, no fim da aba Objetivos.</p>
+    <a class="btn" href="/app/">Voltar ao meu desafio</a>
+  </section>
+
+  <!-- Sem compra neste aparelho -->
+  <section class="card" id="semcompra" hidden>
+    <p class="eyebrow">Brinde do desafio</p>
+    <h2>Este brinde é de quem participa do desafio</h2>
+    <p class="muted">Não encontramos um desafio comprado neste aparelho. Se você comprou em outro celular ou navegador, abra este link nele. Se precisar de ajuda, fale com o suporte dentro do app.</p>
+    <a class="btn" href="/">Conhecer o desafio</a>
+    <a class="btn ghost" href="/app/">Abrir o app</a>
+  </section>
+
+  <section class="card" id="conteudo" hidden>
+    <p class="eyebrow">O que tem no guia</p>
+    <h2>50 prompts em 8 áreas</h2>
+    <ul class="areas">
+      <li><i style="background:#1F9D63"></i>Finanças pessoais</li>
+      <li><i style="background:#0B7285"></i>Excel e planilhas</li>
+      <li><i style="background:#2747C9"></i>Performance no trabalho</li>
+      <li><i style="background:#D9480F"></i>Rotina e tempo</li>
+      <li><i style="background:#7C4DDB"></i>Metas e planejamento</li>
+      <li><i style="background:#152A80"></i>Carreira e renda extra</li>
+      <li><i style="background:#C2255C"></i>Corpo, energia e hábitos</li>
+      <li><i style="background:#B07F00"></i>Aprendizado e foco</li>
+    </ul>
+    <p class="small muted">Copie um prompt, troque o que está entre [colchetes] pelos seus dados e cole no ChatGPT, Claude ou Gemini.</p>
+    <a class="btn ghost" href="/app/">Voltar ao app</a>
+  </section>
+
+  <footer>Destrave o Sucesso em 7 Dias. Material educacional de organização pessoal, gerado com auxílio de inteligência artificial. Não substitui orientação de profissionais de saúde ou carreira.</footer>
+</main>
+
+<script>
+(function(){
+  "use strict";
+  var $=function(s){return document.querySelector(s)};
+  var S={};
+  try{S=JSON.parse(localStorage.getItem("destrave-proto-v2")||"{}")||{}}catch(e){S={}}
+  // Tema escolhido no app
+  try{var th=S.prefs&&S.prefs.theme;if(th==="light"||th==="dark")document.documentElement.setAttribute("data-theme",th)}catch(e){}
+
+  var nome=String((S.a&&S.a.nome)||"").trim().split(/\s+/)[0];
+  var temPlano=!!(S.plan&&S.src==="ia");
+  var avaliou=!!S.survey;
+
+  function mostra(id){["ganhou","falta","semcompra","conteudo"].forEach(function(x){$("#"+x).hidden=x!==id&&!(id==="ganhou"&&x==="conteudo")})}
+  function status(txt,tipo){var el=$("#status");el.hidden=!txt;el.textContent=txt||"";el.className="msg"+(tipo?" "+tipo:"")}
+
+  if(!temPlano||!S.pago) mostra("semcompra");
+  else if(!avaliou) mostra("falta");
+  else{
+    mostra("ganhou");
+    if(nome)$("#titulo").textContent="Parabéns, "+nome+"! Você ganhou um brinde.";
+  }
+
+  var ERRO={nao_pago:"Não encontramos a compra do desafio nesta conta. Se você já pagou, fale com o suporte dentro do app.",not_granted:"Sua sessão expirou. Recarregue a página e tente de novo."};
+  var urlPdf=null;
+  $("#baixar").onclick=async function(){
+    var b=this;
+    if(!window.destraveBrinde){status("Não foi possível preparar o download. Recarregue a página.","bad");return}
+    b.disabled=true;status("Preparando seu brinde…");
+    try{
+      if(!urlPdf){var blob=await window.destraveBrinde.baixar();urlPdf=URL.createObjectURL(blob)}
+      var a=document.createElement("a");a.href=urlPdf;a.download="50-Prompts-para-Destravar-sua-Vida.pdf";document.body.appendChild(a);a.click();a.remove();
+      status("Pronto! O download começou. Se não abriu, toque de novo em Baixar meu brinde.");
+      try{S.T=S.T||{};S.T.brindeBaixadoEm=Date.now();var s2=JSON.parse(localStorage.getItem("destrave-proto-v2")||"{}");s2.T=Object.assign({},s2.T,{brindeBaixadoEm:Date.now()});localStorage.setItem("destrave-proto-v2",JSON.stringify(s2))}catch(e){}
+    }catch(e){
+      status(ERRO[e&&e.code]||"Não foi possível baixar agora. Tente de novo em instantes.","bad");
+    }
+    b.disabled=false;
+  };
+})();
+</script>
+</body>
+</html>

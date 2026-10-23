@@ -1,5 +1,10 @@
 {
   "redirects": [
-    { "source": "/app", "destination": "/app/", "permanent": false }
-  ]
+    { "source": "/app", "destination": "/app/", "permanent": false },
+    { "source": "/brinde", "destination": "/brinde/", "permanent": false },
+    { "source": "/privado/:arquivo*", "destination": "/brinde/", "permanent": false }
+  ],
+  "functions": {
+    "api/brinde.js": { "includeFiles": "privado/**" }
+  }
 }

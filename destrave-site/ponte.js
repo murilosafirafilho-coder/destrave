@@ -168,6 +168,27 @@
     situacao: function (paymentId) { return chamarServidor("/api/pagamento", paymentId ? { payment_id: String(paymentId) } : {}); },
   };
 
+  /* ---------- Brinde (PDF liberado pelo servidor para quem pagou) ---------- */
+  window.destraveBrinde = {
+    // Devolve um Blob com o PDF, ou lança { code } (nao_pago, not_granted, upstream_error...).
+    baixar: async function () {
+      var t = await token();
+      if (!t) throw erro("not_granted", "Sem sessão.");
+      var r;
+      try {
+        r = await fetch("/api/brinde", { method: "POST", headers: { authorization: "Bearer " + t } });
+      } catch (e) {
+        throw erro("upstream_error", "Sem conexão com o servidor.");
+      }
+      if (!r.ok) {
+        var d = {};
+        try { d = await r.json(); } catch (e) {}
+        throw erro(d.code || "upstream_error", d.message);
+      }
+      return await r.blob();
+    },
+  };
+
   window.claude = {
     use: async function (nome) {
       if (nome === "sample") return sample;
