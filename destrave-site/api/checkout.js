@@ -39,7 +39,7 @@ module.exports = async function handler(req, res) {
     const pedido = criado && criado[0];
     if (!pedido) return falha(502, "upstream_error", "Não foi possível registrar o pedido.");
 
-    const retorno = `${site}/?pagamento=retorno`;
+    const retorno = `${site}/app/?pagamento=retorno`;
     const preferencia = {
       items: [{
         id: "desafio-7-dias",

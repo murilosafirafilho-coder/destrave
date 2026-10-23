@@ -3,7 +3,7 @@
   "short_name": "Destrave",
   "description": "Desafio de 7 dias com plano pessoal para destravar sua rotina.",
   "lang": "pt-BR",
-  "start_url": "/",
+  "start_url": "/app/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",

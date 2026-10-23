@@ -1,7 +1,8 @@
 DESTRAVE O SUCESSO EM 7 DIAS - pacote do site
 
 O que tem aqui
-- index.html ............ o app (código do protótipo, sem alterações) + cabeçalho do site
+- index.html ............ a landing page (primeira página do site)
+- app/index.html ........ o app (questionário, compra e plano), em /app/
 - ponte.js .............. faz o app usar o seu servidor e o Supabase no lugar do Claude
 - config.js ............. VOCÊ PREENCHE: Project URL e chave anon public do Supabase
 - api/ia.js ............. o servidor: guarda a chave da Anthropic e chama a IA
@@ -12,7 +13,6 @@ O que tem aqui
 - lib/servidor.js ....... funções do servidor usadas pelo pagamento
 - supabase.sql .......... cria a base de dados e as regras de segurança (colar no SQL Editor)
 - manifest.webmanifest e ícones .. nome e ícone para "Adicionar à tela de início"
-- montar.py ............. para remontar o index.html quando o app mudar (uso técnico)
 
 Variáveis de ambiente na Vercel (Settings > Environment Variables)
 - ANTHROPIC_API_KEY ..... chave do Console da Anthropic (secreta; nunca em config.js)
