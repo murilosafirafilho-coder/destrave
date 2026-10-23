@@ -854,7 +854,7 @@ ABAS DO PLANO (barra no rodapé): Início, Objetivos, Rotina e Ajustes.
 - Início: o que está travando a pessoa, "Ver diagnóstico", "Ver plano" (as 4 categorias), metas dos 7 dias, e no fim "Refazer questionário" e "Ver minhas respostas".
 - Objetivos: em "Roteiro de 7 dias", tocar no dia abre as tarefas; marcar todas conclui o dia. Cada dia libera na sua data no calendário (não dá para adiantar dias futuros) e depois que o dia anterior é concluído; um dia atrasado pode ser concluído depois. O anel no topo mostra quantos dias foram concluídos. Em "Metas por categoria", "Ver metas completas" abre ações, o que medir e a meta de 7 dias, além de livros e revisão semanal.
 - Começar agora: aparece em Objetivos quando o Dia 1 é uma data futura. Muda o Dia 1 para hoje, com confirmação; o plano é refeito para os novos dias (até 2 minutos). Se a nova geração falhar ou for cancelada, o plano anterior continua.
-- Rotina: mostra a semana dia a dia. Itens com cadeado vêm do plano e não podem ser editados. "Adicionar à rotina" pede nome, dias, início, fim e tipo, e o app confere se cabe; se não couber, sugere o horário livre mais próximo. Itens adicionados têm "Editar" e "Remover" (com "Desfazer"). "Integrar ao Google Agenda" mostra os eventos da semana; a integração ainda está sendo preparada e nada é enviado à agenda por enquanto.
+- Rotina: mostra a semana dia a dia. Itens com cadeado vêm do plano e não podem ser editados. "Adicionar à rotina" pede nome, dias, início, fim e tipo, e o app confere se cabe; se não couber, sugere o horário livre mais próximo. Itens adicionados têm "Editar" e "Remover" (com "Desfazer"). "Integrar ao Google Agenda" (aba Rotina): a pessoa entra com a conta Google e o app cria uma agenda separada chamada "Destrave · 7 dias" com as atividades dos 7 dias (trabalho e deslocamento ficam de fora), com lembrete 10 minutos antes. O app só mexe nessa agenda. Tocar de novo atualiza. Para remover, apagar a agenda "Destrave · 7 dias" no Google Agenda. Se aparecer aviso de app não verificado do Google, ou a janela não abrir: encaminhar para a equipe.
 - Avaliação da semana + Brinde: fica no fim de Objetivos. Abre no Dia 7, quando as tarefas desse dia são concluídas, ou a partir do dia seguinte ao Dia 7. Não abre antes do Dia 7, mesmo com tudo marcado. O brinde é o guia "50 Prompts para Destravar sua Vida", em PDF. Ao enviar a avaliação, a pessoa vai para a página do brinde (endereço /brinde/) e baixa o arquivo; dá para voltar lá pelo botão "Resgatar Brinde". Se o download não funcionar: encaminhar para a equipe.
 - Ajustes: tamanho do texto, tema claro ou escuro, "Adicionar à tela de início" (no iPhone: Safari, Compartilhar, Adicionar à Tela de Início; no Android: Chrome, instalar), conta, pagamento, lembretes por notificação e e-mail com horário (ainda em preparação: o app só guarda a escolha), termos, privacidade, "Apagar meus dados" (apaga tudo deste aparelho e do nosso registro, sem volta; o registro da compra é mantido) e "Falar com o suporte".
 REFAZER QUESTIONÁRIO: as respostas anteriores aparecem preenchidas para editar. Ao gerar um novo plano, o progresso do plano anterior é zerado.
@@ -1624,6 +1624,87 @@ function rSurvey(){
     if(S.pago){const box=$("#survey");if(box)box.insertAdjacentHTML("afterbegin",`<div class="okmsg" role="status"><span>Avaliação enviada! Abrindo o seu brinde…</span></div>`);setTimeout(()=>{location.href="/brinde/"},1500)}};
 }
 
+
+/* ---------- Google Agenda: envia a rotina dos 7 dias ----------
+   Entrar com Google (Google Identity Services, no navegador) com a permissão mais restrita:
+   calendar.app.created = o app cria a agenda "Destrave · 7 dias" e só mexe nela.
+   O ID do cliente OAuth fica em config.js (GOOGLE_CLIENT_ID); é público por natureza. */
+const GCAL={escopo:"https://www.googleapis.com/auth/calendar.app.created",nome:"Destrave · 7 dias",api:"https://www.googleapis.com/calendar/v3",cliente:null,ocupado:false};
+const gcalId=()=>String((window.DESTRAVE_CONFIG||{}).GOOGLE_CLIENT_ID||"").trim();
+function gcalCarregar(){
+  if(!gcalId()||window.google&&google.accounts&&google.accounts.oauth2||document.getElementById("gis"))return;
+  const sc=document.createElement("script");sc.id="gis";sc.src="https://accounts.google.com/gsi/client";sc.async=true;document.head.appendChild(sc);
+}
+setTimeout(gcalCarregar,1200);
+const pad2=n=>String(n).padStart(2,"0");
+const isoLocal=(d,min)=>{const x=new Date(d.getTime());x.setHours(0,0,0,0);x.setMinutes(min);return `${x.getFullYear()}-${pad2(x.getMonth()+1)}-${pad2(x.getDate())}T${pad2(x.getHours())}:${pad2(x.getMinutes())}:00`};
+const hm=t=>{const m=/^(\d{1,2}):(\d{2})$/.exec(String(t||""));return m?(+m[1])*60+(+m[2]):null};
+// Eventos dos 7 dias do desafio, nas datas reais (trabalho e deslocamento ficam de fora).
+function gcalEventos(){
+  const fuso=(Intl.DateTimeFormat().resolvedOptions().timeZone)||"America/Sao_Paulo";
+  return ORD().flatMap((dia,i)=>blocksFor(1,dia).filter(b=>b.esfera!=="fixo").map(b=>{
+    const ini=hm(b.inicio);let fim=hm(b.fim);if(ini===null||fim===null)return null;if(fim<=ini)fim+=1440;
+    return {i,dia,b,corpo:{summary:String(b.atividade||"Atividade").slice(0,200),description:`Destrave o Sucesso em 7 Dias · Dia ${i+1}`,
+      start:{dateTime:isoLocal(dayDate(i),ini),timeZone:fuso},end:{dateTime:isoLocal(dayDate(i),fim),timeZone:fuso},
+      reminders:{useDefault:false,overrides:[{method:"popup",minutes:10}]}}};
+  })).filter(Boolean);
+}
+function abrirAgenda(){
+  const ev=gcalEventos(),ja=S.gcal&&S.gcal.enviadoEm;
+  const lista=`<ul class="plain">${ev.slice(0,8).map(x=>`<li>Dia ${x.i+1} (${x.dia.slice(0,3)}) · ${esc(x.b.inicio)}–${esc(x.b.fim)} · ${esc(x.b.atividade)}</li>`).join("")}${ev.length>8?`<li>E mais ${ev.length-8}.</li>`:""}</ul>`;
+  const pronto=!!gcalId();
+  openSheet("Integrar ao Google Agenda",`
+    <p>Vamos criar no seu Google Agenda uma agenda chamada <b>${GCAL.nome}</b>, com ${ev.length} eventos dos 7 dias do desafio, cada um com lembrete 10 minutos antes.</p>
+    ${lista}
+    <p class="muted small">Trabalho e deslocamento ficam de fora. O app só mexe nessa agenda: não lê nem altera seus outros compromissos. Para remover tudo, basta apagar a agenda ${GCAL.nome} no Google Agenda.</p>
+    ${ja?`<p class="okmsg small">Enviado em ${new Date(S.gcal.enviadoEm).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})}. Enviar de novo atualiza a agenda com a rotina de agora.</p>`:""}
+    ${pronto?`<button class="btn" id="gcalIr" type="button">${ja?"Atualizar minha agenda":"Entrar com Google e enviar"}</button><p class="small muted">Use a conta Google do e-mail ${esc((S.account&&S.account.email)||S.a.email||"cadastrado")}, ou outra que preferir.</p>`
+           :`<p class="note">A integração com o Google Agenda está sendo preparada. Por enquanto, nada é enviado à sua agenda.</p>`}
+    <p class="small" id="gcalSt" role="status"></p>`);
+  if(pronto)$("#gcalIr").onclick=gcalEnviar;
+}
+function gcalStatus(t,tipo){const el=$("#gcalSt");if(el){el.textContent=t||"";el.className="small"+(tipo==="erro"?" qerr":"")}}
+function gcalEnviar(){
+  if(GCAL.ocupado)return;
+  if(!(window.google&&google.accounts&&google.accounts.oauth2)){gcalCarregar();gcalStatus("Carregando o Google… toque de novo em alguns segundos.","erro");return}
+  if(!GCAL.cliente){
+    GCAL.cliente=google.accounts.oauth2.initTokenClient({client_id:gcalId(),scope:GCAL.escopo,
+      callback:r=>{if(r&&r.access_token)gcalGravar(r.access_token);else gcalStatus("A autorização não foi concluída. Tente de novo.","erro")},
+      error_callback:e=>{GCAL.ocupado=false;gcalStatus(e&&e.type==="popup_closed"?"Você fechou a janela do Google antes de autorizar.":"Não foi possível abrir o login do Google. Verifique se o navegador bloqueou a janela.","erro")}});
+  }
+  gcalStatus("Abrindo o Google…");
+  GCAL.cliente.requestAccessToken({hint:(S.account&&S.account.email)||S.a.email||""});
+}
+async function gcalGravar(token){
+  GCAL.ocupado=true;
+  const api=async(caminho,metodo,corpo)=>{const r=await fetch(GCAL.api+caminho,{method:metodo||"GET",headers:{authorization:"Bearer "+token,"content-type":"application/json"},body:corpo?JSON.stringify(corpo):undefined});
+    if(r.status===204)return {};const d=await r.json().catch(()=>({}));if(!r.ok){const e=new Error((d.error&&d.error.message)||("HTTP "+r.status));e.status=r.status;throw e}return d};
+  try{
+    const ev=gcalEventos();
+    if(!ev.length){gcalStatus("Não há atividades na sua rotina para enviar.","erro");GCAL.ocupado=false;return}
+    let cal=S.gcal&&S.gcal.calendarId;
+    // Reaproveita a agenda criada antes: apaga os eventos antigos dela para não duplicar.
+    if(cal){
+      try{
+        let pg="";do{const l=await api(`/calendars/${encodeURIComponent(cal)}/events?maxResults=250${pg?"&pageToken="+encodeURIComponent(pg):""}`);
+          for(const e of l.items||[]){gcalStatus("Limpando a agenda anterior…");await api(`/calendars/${encodeURIComponent(cal)}/events/${encodeURIComponent(e.id)}`,"DELETE").catch(()=>{})}
+          pg=l.nextPageToken||""}while(pg);
+      }catch(e){if(e.status===404||e.status===403||e.status===410)cal=null;else throw e}
+    }
+    if(!cal){gcalStatus("Criando a agenda "+GCAL.nome+"…");const c=await api("/calendars","POST",{summary:GCAL.nome,description:"Rotina do desafio Destrave o Sucesso em 7 Dias.",timeZone:(Intl.DateTimeFormat().resolvedOptions().timeZone)||"America/Sao_Paulo"});cal=c.id}
+    let n=0;
+    for(const x of ev){await api(`/calendars/${encodeURIComponent(cal)}/events`,"POST",x.corpo);n++;gcalStatus(`Enviando ${n} de ${ev.length}…`)}
+    S.gcal={calendarId:cal,enviadoEm:Date.now(),total:n};tlog("agenda_enviada");save();track();
+    gcalStatus("");
+    const b=$("#sheetB");if(b)b.insertAdjacentHTML("beforeend",`<div class="okmsg" role="status"><span>Pronto! ${n} eventos estão na agenda <b>${GCAL.nome}</b> do seu Google Agenda.</span></div><a class="btn ghost" href="https://calendar.google.com/calendar/r/week/${dayDate(0).getFullYear()}/${dayDate(0).getMonth()+1}/${dayDate(0).getDate()}" target="_blank" rel="noopener">Abrir o Google Agenda</a>`);
+    const ir=$("#gcalIr");if(ir)ir.textContent="Atualizar minha agenda";
+  }catch(e){
+    gcalStatus(e.status===401?"A autorização expirou. Toque de novo para entrar com Google.":e.status===403?"O Google recusou o acesso à agenda. Tente de novo e marque a permissão pedida.":"Não foi possível enviar agora. Tente de novo em instantes.","erro");
+    if(e.status===401)GCAL.cliente=null;
+  }
+  GCAL.ocupado=false;
+}
+
 /* ---------- aba Rotina ---------- */
 let RF={open:false,edit:null,msg:"",ok:"",undo:null};
 function baseCtx(){const c=calc(PA());return c.sono==null||c.err.length?calc(EX_ANS):c}
@@ -1667,7 +1748,7 @@ function rRotina(pv){
    <div class="card" id="addform" ${RF.open?"":"hidden"}></div>`;
   pv.querySelectorAll(".dchip").forEach(b=>b.onclick=()=>{S.rday=+b.dataset.d;RF.ok="";save();rPlan()});
   if($("#addbtn"))$("#addbtn").onclick=()=>{RF={open:true,edit:null,msg:"",ok:"",undo:null};rPlan();$("#rf_nome").focus()};
-  if($("#gcal"))$("#gcal").onclick=()=>{const ev=ORD().flatMap(d=>blocksFor(1,d).filter(b=>b.esfera!=="fixo").map(b=>({d,b})));openSheet("Integrar ao Google Agenda",`<p>Com a integração, você entra com sua conta Google e autoriza o acesso à sua agenda. Vamos criar ${ev.length} eventos com a sua semana, cada um com lembrete 10 minutos antes:</p><ul class="plain">${ev.slice(0,8).map(x=>`<li>${x.d.slice(0,3)} · ${esc(x.b.inicio)}–${esc(x.b.fim)} · ${esc(x.b.atividade)}</li>`).join("")}${ev.length>8?`<li>E mais ${ev.length-8}.</li>`:""}</ul><p class="muted">Trabalho e deslocamento ficam de fora. O que você adicionar ou editar depois também é atualizado na agenda.</p><p class="note">A integração com o Google Agenda está sendo preparada. Por enquanto, nada é enviado à sua agenda.</p>`)};
+  if($("#gcal"))$("#gcal").onclick=abrirAgenda;
   if($("#undo"))$("#undo").onclick=()=>{const u=RF.undo;S.custom[u.w]=(S.custom[u.w]||[]).concat([u.item]);RF.ok="Item restaurado.";RF.undo=null;save();rPlan()};
   pv.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{
     const id=b.dataset.del,item=(S.custom[W]||[]).find(x=>x.id===id);

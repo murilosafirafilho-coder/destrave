@@ -4,7 +4,8 @@ O que tem aqui
 - index.html ............ a landing page (primeira página do site)
 - app/index.html ........ o app (questionário, compra e plano), em /app/
 - ponte.js .............. faz o app usar o seu servidor e o Supabase no lugar do Claude
-- config.js ............. VOCÊ PREENCHE: Project URL e chave anon public do Supabase
+- config.js ............. VOCÊ PREENCHE: Project URL e chave anon public do Supabase,
+                          e GOOGLE_CLIENT_ID (Google Agenda; público)
 - api/ia.js ............. o servidor: guarda a chave da Anthropic e chama a IA
 - api/checkout.js ....... abre o pagamento no Mercado Pago (preço definido no servidor)
 - api/pagamento.js ...... confere se a pessoa pagou (sempre na API do Mercado Pago)
