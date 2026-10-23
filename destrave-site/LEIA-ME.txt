@@ -5,6 +5,11 @@ O que tem aqui
 - ponte.js .............. faz o app usar o seu servidor e o Supabase no lugar do Claude
 - config.js ............. VOCÊ PREENCHE: Project URL e chave anon public do Supabase
 - api/ia.js ............. o servidor: guarda a chave da Anthropic e chama a IA
+- api/checkout.js ....... abre o pagamento no Mercado Pago (preço definido no servidor)
+- api/pagamento.js ...... confere se a pessoa pagou (sempre na API do Mercado Pago)
+- api/mp-webhook.js ..... recebe os avisos do Mercado Pago (Pix aprovado, estorno...)
+- api/diagnostico.js .... abra /api/diagnostico para conferir a configuração
+- lib/servidor.js ....... funções do servidor usadas pelo pagamento
 - supabase.sql .......... cria a base de dados e as regras de segurança (colar no SQL Editor)
 - manifest.webmanifest e ícones .. nome e ícone para "Adicionar à tela de início"
 - montar.py ............. para remontar o index.html quando o app mudar (uso técnico)
@@ -13,7 +18,10 @@ Variáveis de ambiente na Vercel (Settings > Environment Variables)
 - ANTHROPIC_API_KEY ..... chave do Console da Anthropic (secreta; nunca em config.js)
 - SUPABASE_URL .......... mesma Project URL do config.js
 - SUPABASE_ANON_KEY ..... mesma chave anon public do config.js
-- (opcionais) MODELO_PADRAO, MODELO_RAPIDO, LIMITE_DIARIO
+- SUPABASE_SERVICE_ROLE_KEY .. chave service_role do Supabase (SECRETA)
+- MP_ACCESS_TOKEN ............ Access Token do Mercado Pago (SECRETO)
+- (opcionais) MODELO_PADRAO, MODELO_RAPIDO, LIMITE_DIARIO, LIMITE_SEM_PAGAMENTO (padrão 6),
+  PRECO (padrão 47.90), SITE_URL (ex.: https://destrave.com.br)
 
-Nunca coloque em config.js, no GitHub ou em conversa: a chave da Anthropic nem a chave
-"service_role" do Supabase.
+Nunca coloque em config.js, no GitHub ou em conversa: a chave da Anthropic, a chave
+"service_role" do Supabase nem o Access Token do Mercado Pago.

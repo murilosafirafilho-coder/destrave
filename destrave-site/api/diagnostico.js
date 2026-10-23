@@ -9,18 +9,44 @@ module.exports = async function handler(req, res) {
   r.variaveis.ANTHROPIC_API_KEY = key ? (key.startsWith("sk-ant-") ? "ok" : "preenchida, mas não parece uma chave da Anthropic (deveria começar com sk-ant-)") : "FALTANDO";
   r.variaveis.SUPABASE_URL = url ? (/^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(url) ? "ok" : "formato errado: use https://<projeto>.supabase.co, sem /rest/v1 e sem barra no fim") : "FALTANDO";
   r.variaveis.SUPABASE_ANON_KEY = anon ? (anon.length > 20 ? "ok" : "parece incompleta") : "FALTANDO";
+  const servico = process.env.SUPABASE_SERVICE_ROLE_KEY || "", mpToken = process.env.MP_ACCESS_TOKEN || "";
+  r.variaveis.SUPABASE_SERVICE_ROLE_KEY = servico ? (servico === anon ? "ERRADA: é a chave anon; use a service_role" : servico.length > 20 ? "ok" : "parece incompleta") : "FALTANDO";
+  r.variaveis.MP_ACCESS_TOKEN = mpToken ? (/^(APP_USR|TEST)-/.test(mpToken) ? "ok" : "preenchida, mas não parece um Access Token do Mercado Pago (deveria começar com APP_USR- ou TEST-)") : "FALTANDO";
 
   // Supabase: a função usar_ia existe? (sem sessão, ela deve recusar; se não existir, o SQL não foi rodado)
   if (url && anon) {
     try {
-      const s = await fetch(`${url}/rest/v1/rpc/usar_ia`, { method: "POST", headers: { apikey: anon, "content-type": "application/json" }, body: "{}" });
+      const s = await fetch(`${url}/rest/v1/rpc/registrar_uso`, { method: "POST", headers: { apikey: anon, "content-type": "application/json" }, body: JSON.stringify({ p_tipo: "chat" }) });
       const t = await s.text();
-      if (/Could not find the function|PGRST202/i.test(t)) r.supabase = "o banco responde, mas a função usar_ia não existe: rode o supabase.sql no SQL Editor";
+      if (/Could not find the function|PGRST202/i.test(t)) r.supabase = "o banco responde, mas a função registrar_uso não existe: rode o supabase.sql novo no SQL Editor";
       else if (s.status === 401 || s.status === 403 || /permission denied/i.test(t)) r.supabase = "ok (banco e função encontrados)";
       else if (s.status >= 500) r.supabase = `o Supabase respondeu com erro ${s.status}`;
       else r.supabase = `resposta inesperada (${s.status}): ${t.slice(0, 160)}`;
     } catch (e) { r.supabase = "não foi possível falar com o Supabase: confira SUPABASE_URL"; }
   } else r.supabase = "não testado (faltam variáveis)";
+
+  // Pagamento: a tabela de pedidos existe e a chave service_role funciona? O Access Token do Mercado Pago vale?
+  r.pagamento = {};
+  if (url && servico) {
+    try {
+      const p = await fetch(`${url}/rest/v1/pedidos?select=id&limit=1`, { headers: { apikey: servico, authorization: `Bearer ${servico}` } });
+      const t = await p.text();
+      if (p.ok) r.pagamento.pedidos = "ok (tabela de pedidos acessível pelo servidor)";
+      else if (/does not exist|PGRST205|42P01/i.test(t)) r.pagamento.pedidos = "a tabela pedidos não existe: rode o supabase.sql novo no SQL Editor";
+      else if (p.status === 401) r.pagamento.pedidos = "chave service_role recusada: confira SUPABASE_SERVICE_ROLE_KEY";
+      else r.pagamento.pedidos = `resposta inesperada (${p.status}): ${t.slice(0, 160)}`;
+    } catch (e) { r.pagamento.pedidos = "não foi possível falar com o Supabase"; }
+  } else r.pagamento.pedidos = "não testado (falta a chave service_role)";
+  if (mpToken) {
+    try {
+      const m = await fetch("https://api.mercadopago.com/users/me", { headers: { authorization: `Bearer ${mpToken}` } });
+      const d = await m.json().catch(() => ({}));
+      if (m.ok) r.pagamento.mercado_pago = `ok (conta ${d.nickname || d.id || "encontrada"}${d.site_id ? ", " + d.site_id : ""})`;
+      else if (m.status === 401) r.pagamento.mercado_pago = "Access Token recusado: copie de novo em Suas integrações > Credenciais";
+      else r.pagamento.mercado_pago = `erro ${m.status}`;
+    } catch (e) { r.pagamento.mercado_pago = "não foi possível falar com o Mercado Pago"; }
+  } else r.pagamento.mercado_pago = "não testado (falta MP_ACCESS_TOKEN)";
+  r.pagamento.site = process.env.SITE_URL ? `SITE_URL = ${process.env.SITE_URL}` : `sem SITE_URL: usando o endereço do pedido (${req.headers.host || "?"})`;
 
   // Anthropic: uma chamada mínima com cada modelo, do mesmo jeito que o app usa (sem "pensar" antes de responder)
   const modelos = { planos: process.env.MODELO_PADRAO || "claude-sonnet-5-5", suporte: process.env.MODELO_RAPIDO || "claude-haiku-5-5" };
@@ -52,6 +78,7 @@ module.exports = async function handler(req, res) {
   if (ruins.length) r.conclusao.push("Corrija as variáveis na Vercel (Settings > Environment Variables) e depois faça Redeploy: " + ruins.join(" | "));
   if (!r.supabase.startsWith("ok")) r.conclusao.push("Supabase: " + r.supabase);
   for (const [uso, v] of Object.entries(r.anthropic)) if (!String(v).startsWith("ok")) r.conclusao.push(`Anthropic (${uso}): ${v}`);
+  for (const k of ["pedidos", "mercado_pago"]) if (!String(r.pagamento[k]).startsWith("ok")) r.conclusao.push(`Pagamento (${k}): ${r.pagamento[k]}`);
   if (!r.conclusao.length) r.conclusao.push("Tudo certo. Se a geração ainda falhar, confira se o login anônimo está ligado no Supabase (Authentication > Providers).");
   res.setHeader("cache-control", "no-store");
   return res.status(200).json(r);

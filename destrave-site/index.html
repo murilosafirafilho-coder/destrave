@@ -806,7 +806,9 @@ $("#closeSheet").onclick=()=>$("#sheet").hidden=true;
 $("#sheet").addEventListener("click",e=>{if(e.target.id==="sheet")$("#sheet").hidden=true});
 document.addEventListener("keydown",e=>{if(e.key==="Escape")$("#sheet").hidden=true});
 const INSTALL_HTML=`<p><b>Android (Chrome):</b> no site real, o botão abre o pedido de instalação direto.</p><p><b>iPhone (Safari):</b> toque em Compartilhar e depois em "Adicionar à Tela de Início".</p><p class="muted">No protótipo, este botão só mostra as instruções.</p>`;
-const OFFER_HTML=`<p>O Plano Completo mantém o app depois dos 7 dias: check-in diário, rotina editável sem limite de semanas, revisão semanal guiada e um novo plano a cada 30 dias.</p><p class="price">R$ 99<span class="small muted">/mês</span></p><p class="muted">Oferta ilustrativa. No site real, este botão leva ao pagamento.</p>`;
+const PRECO_TXT="R$ 47,90";
+// Estado da tela de compra (não é salvo: o pagamento é sempre conferido no servidor).
+let COMPRA={estado:"",msg:"",tentativas:0,timer:null,retorno:null};
 
 function go(view){S.view=view;save();render();window.scrollTo(0,0)}
 // Confirmação dentro do app (o confirm() do navegador pode ser bloqueado quando o app roda embutido).
@@ -825,15 +827,15 @@ function ask(titulo,texto,sim,onYes){
 const SUP_GUIA=`O QUE É: "Destrave o Sucesso em 7 Dias" é um desafio de 7 dias. A pessoa responde um questionário (7 partes, cerca de 55 perguntas, uns 12 minutos) e recebe um plano pessoal gerado por IA nas 4 categorias: Tempo & Rotina, Corpo & Energia, Foco & Performance e Lazer & Hobbies.
 CONTA: é criada ao terminar a Parte 1 do questionário, com o e-mail informado e uma senha (mínimo 8 caracteres, com letra e número). Ao criar, a pessoa aceita participar do teste. No protótipo a senha não é salva. Esqueceu a senha ou quer trocar o e-mail da conta: encaminhar para a equipe.
 QUESTIONÁRIO: as respostas ficam salvas neste navegador, dá para sair e continuar depois. "Voltar" volta uma parte. Opção "Outro" abre uma caixa de até 100 caracteres. Na Parte 3 (Tempo & Rotina), cada dia de trabalho é marcado como Presencial ou Casa, com horário próprio; turnos que viram a noite (ex.: 22h às 6h) são aceitos. Compromissos fixos (reunião, faculdade, esporte) entram com nome, dias, horário e tipo, pelo botão "+ Adicionar compromisso". Na última parte a pessoa escolhe o Dia 1 no calendário, de hoje até 60 dias.
-CONFERÊNCIA E GERAÇÃO: antes de gerar, o app mostra os horários calculados; "Corrigir respostas" volta ao questionário. A geração leva de 30 segundos a 2 minutos e só funciona com a pessoa logada no Claude e autorizando o uso. Se falhar: "Tentar de novo" ou "Ver plano de exemplo". Dá para cancelar durante a geração.
+CONFERÊNCIA E GERAÇÃO: antes de gerar, o app mostra os horários calculados; "Corrigir respostas" volta ao questionário. A geração leva de 30 segundos a 2 minutos. Se falhar: "Tentar de novo" ou "Ver plano de exemplo". Dá para cancelar durante a geração.
+PAGAMENTO: depois que o plano é gerado, abre a tela de compra. O plano é liberado após o pagamento único de R$ 47,90, por Pix ou cartão, no Mercado Pago (boleto não é aceito). Aprovado o pagamento, a pessoa volta sozinha ao app, na aba Início. Pix pendente: a tela confere sozinha; o botão "Já paguei" confere na hora. Não é assinatura, não há cobrança mensal. Reembolso em até 7 dias após a compra, pelo suporte. Pagamento não reconhecido, cobrança em dobro, reembolso, ou pagou e o plano não liberou: encaminhar para a equipe.
 ABAS DO PLANO (barra no rodapé): Início, Objetivos, Rotina e Ajustes.
 - Início: o que está travando a pessoa, "Ver diagnóstico", "Ver plano" (as 4 categorias), metas dos 7 dias, e no fim "Refazer questionário" e "Ver minhas respostas".
 - Objetivos: em "Roteiro de 7 dias", tocar no dia abre as tarefas; marcar todas conclui o dia. Cada dia libera quando o anterior é concluído (o Dia 1 já vem liberado). O anel no topo mostra quantos dias foram concluídos. Em "Metas por categoria", "Ver metas completas" abre ações, o que medir e a meta de 7 dias, além de livros e revisão semanal.
 - Começar agora: aparece em Objetivos quando o Dia 1 é uma data futura. Muda o Dia 1 para hoje, com confirmação; o plano é refeito para os novos dias (até 2 minutos). Se a nova geração falhar ou for cancelada, o plano anterior continua.
 - Rotina: mostra a semana dia a dia. Itens com cadeado vêm do plano e não podem ser editados. "Adicionar à rotina" pede nome, dias, início, fim e tipo, e o app confere se cabe; se não couber, sugere o horário livre mais próximo. Itens adicionados têm "Editar" e "Remover" (com "Desfazer"). "Integrar ao Google Agenda" no protótipo só mostra como vai funcionar, nada é enviado.
 - Avaliação da semana + Brinde: fica no fim de Objetivos. Abre no Dia 7 do desafio ou quando os 7 dias são concluídos. O brinde ainda está sendo preparado e é liberado depois da avaliação.
-- Ajustes: tamanho do texto, tema claro ou escuro, "Adicionar à tela de início" (no iPhone: Safari, Compartilhar, Adicionar à Tela de Início; no Android: Chrome, instalar), conta, assinatura, lembretes por notificação e e-mail com horário (no protótipo só guarda a escolha), termos, privacidade, "Apagar meus dados" (apaga tudo deste aparelho e do registro do teste, sem volta) e "Falar com o suporte".
-PLANO COMPLETO: assinatura de R$ 99 por mês para continuar depois dos 7 dias, com check-in diário, rotina sem limite de semanas, revisão semanal guiada e novo plano a cada 30 dias. No protótipo a oferta é ilustrativa; pagamento, cobrança, cancelamento e reembolso: encaminhar para a equipe.
+- Ajustes: tamanho do texto, tema claro ou escuro, "Adicionar à tela de início" (no iPhone: Safari, Compartilhar, Adicionar à Tela de Início; no Android: Chrome, instalar), conta, pagamento, lembretes por notificação e e-mail com horário (no protótipo só guarda a escolha), termos, privacidade, "Apagar meus dados" (apaga tudo deste aparelho e do registro do teste, sem volta) e "Falar com o suporte".
 REFAZER QUESTIONÁRIO: as respostas anteriores aparecem preenchidas para editar. Ao gerar um novo plano, o progresso do plano anterior é zerado.
 DADOS: as respostas ficam neste navegador. Para quem aceitou o teste, respostas e progresso também chegam ao responsável pelo teste. E-mail e telefone não são enviados à IA.`;
 const SUP_REGRAS=`Você é o assistente de suporte do app "Destrave o Sucesso em 7 Dias". Sua única função é tirar dúvidas simples sobre como USAR o app.
@@ -919,12 +921,16 @@ setTimeout(async()=>{
 },0);
 function render(){
   applyPrefs();
+  // O plano gerado pela IA só abre depois do pagamento; até lá, a tela de compra.
+  if(S.view==="plan"&&S.src==="ia"&&!S.pago)S.view="compra";
+  if(S.view==="compra"&&!(S.plan&&S.src==="ia"))S.view=S.plan?"plan":"welcome";
+  if(S.view==="compra"&&S.pago)S.view="plan";
   const plan=S.view==="plan";
   $("#tabs").hidden=!plan;$("#ring").hidden=!plan;
   $("#hsub").textContent=plan&&PA().nome?`Plano de ${PA().nome}`:"Seu plano personalizado";
   if(S.view!=="painel"&&PAINEL.unsub){PAINEL.unsub();PAINEL.unsub=null}
   if(S.view!=="painel"&&PAINEL.unsubSup){PAINEL.unsubSup();PAINEL.unsubSup=null}
-  ({welcome:rWelcome,quiz:rQuiz,review:rReview,gen:rGen,plan:rPlan,painel:rPainel,suporte:rSuporte})[S.view]();
+  ({welcome:rWelcome,quiz:rQuiz,review:rReview,gen:rGen,plan:rPlan,compra:rCompra,painel:rPainel,suporte:rSuporte})[S.view]();
 }
 
 /* ---------- boas-vindas ---------- */
@@ -1297,13 +1303,15 @@ function rGen(){
   main.innerHTML=`<div class="screen"><div class="card"><h2>Gerando seu plano</h2><p class="small muted">A montagem leva de 30 segundos a 2 minutos.</p>
    <ul class="load">${STEPS.map((s,i)=>`<li class="${i<genState.step?"ok":i===genState.step?"on":""}"><span class="dot"></span>${s}</li>`).join("")}</ul>
    ${genState.msg?`<p class="small">${esc(genState.msg)}</p>`:""}</div>
-   ${genState.fail?`<div class="alert">${esc(genState.fail)}</div><div class="row"><button class="btn ghost" id="toex">Ver plano de exemplo</button><button class="btn" id="retry">Tentar de novo</button></div>`:`<button class="btn ghost" id="stop">Cancelar</button>`}
+   ${genState.fail&&genState.code==="limite_geracoes"&&S.plan&&S.src==="ia"?`<div class="alert">${esc(genState.fail)}</div><button class="btn" id="tomine">Ver meu plano</button>`
+     :genState.fail?`<div class="alert">${esc(genState.fail)}</div><div class="row"><button class="btn ghost" id="toex">Ver plano de exemplo</button><button class="btn" id="retry">Tentar de novo</button></div>`:`<button class="btn ghost" id="stop">Cancelar</button>`}
   </div>`;
-  if(genState.fail){$("#retry").onclick=()=>generate();$("#toex").onclick=()=>setPlan(EX_PLAN,"exemplo",[])}
+  if($("#tomine"))$("#tomine").onclick=()=>go("plan");
+  else if(genState.fail){$("#retry").onclick=()=>generate();$("#toex").onclick=()=>setPlan(EX_PLAN,"exemplo",[])}
   else $("#stop").onclick=()=>{genRun++;ctl&&ctl.abort();S.T.geracao=Object.assign({},S.T.geracao,{resultado:"cancelada pela pessoa"});track("geracao_cancelada");if(genFallback)restoreFallback("Mudança cancelada. A data do seu desafio não mudou.");else go("review")};
 }
 function step(n,msg){genState.step=n;genState.msg=msg||"";if(S.view==="gen")rGen()}
-const FAIL={not_granted:"A geração com IA não foi autorizada neste acesso. Você pode ver o plano de exemplo.",sampling_disabled:"A geração com IA não está disponível nesta conta.",rate_limited:"Muitas gerações em pouco tempo. Espere alguns minutos e tente de novo.",invalid_json:"O plano veio fora do formato esperado. Tente de novo.",session_expired:"Sua sessão expirou. Entre de novo no Claude e tente outra vez.",refused:"Não foi possível gerar um plano com essas respostas. Revise o texto das respostas e tente de novo."};
+const FAIL={not_granted:"A geração com IA não foi autorizada neste acesso. Você pode ver o plano de exemplo.",sampling_disabled:"A geração com IA não está disponível nesta conta.",rate_limited:"Muitas gerações em pouco tempo. Espere alguns minutos e tente de novo.",invalid_json:"O plano veio fora do formato esperado. Tente de novo.",session_expired:"Sua sessão expirou. Entre de novo no Claude e tente outra vez.",refused:"Não foi possível gerar um plano com essas respostas. Revise o texto das respostas e tente de novo.",limite_geracoes:"Você já gerou o seu plano o número máximo de vezes antes da compra. O último plano gerado continua guardado."};
 async function generate(fb){
   genFallback=fb||null;
   S.T.geracao={iniciadaEm:Date.now(),resultado:"em andamento"};track(fb?"refazendo_plano":"geracao_iniciada");
@@ -1339,7 +1347,7 @@ async function generate(fb){
     if((e&&e.code==="cancelled")||run!==genRun)return;
     if(genFallback){restoreFallback(keepMsg());return}
     S.T.geracao={iniciadaEm:(S.T.geracao||{}).iniciadaEm,resultado:"falhou",codigo:(e&&e.code)||"?"};track("geracao_falhou");
-    genState.fail=FAIL[e&&e.code]||"A geração falhou por um problema temporário. Tente de novo.";rGen();
+    genState.fail=FAIL[e&&e.code]||"A geração falhou por um problema temporário. Tente de novo.";genState.code=(e&&e.code)||"";rGen();
   }
 }
 function setPlan(plan,src,issues,startTs){
@@ -1348,6 +1356,95 @@ function setPlan(plan,src,issues,startTs){
   plan.dias=plan.dias.slice(0,7);
   S.T.planoEm=Date.now();S.T.dias={};if(src==="ia")S.T.geracao={iniciadaEm:(S.T.geracao||{}).iniciadaEm,resultado:"ok",pontosRevisao:(issues||[]).length};tlog(src==="ia"?"plano_gerado":"viu_plano_exemplo");
   Object.assign(S,{plan,src,issues,start:src==="exemplo"?nextMonday():(startTs||Date.now()),startManual:false,surveyUnlocked:false,checks:{},open:0,tab:"inicio",survey:null,objView:"dias",week:1,rday:0,custom:{}});go("plan")}
+
+/* ---------- compra (Mercado Pago) ---------- */
+// O plano gerado fica guardado neste aparelho e só abre depois do pagamento.
+// Quem decide se a pessoa pagou é o servidor, que confere na API do Mercado Pago.
+const PAG_ERR={nao_configurado:"O pagamento ainda está sendo configurado. Tente mais tarde ou fale com o suporte.",not_granted:"Sua sessão expirou. Recarregue a página e tente de novo."};
+function rCompra(){
+  const nome=String(S.a.nome||"").trim().split(/\s+/)[0];
+  const cats=bySphere().map(e=>`<li>${esc(sphName(e.id))}${e.papel==="principal"?' <span class="tag main">Principal</span>':""}</li>`).join("");
+  const c=COMPRA,ocupado=c.estado==="abrindo"||c.estado==="verificando";
+  const aviso={
+    abrindo:`<p class="small" role="status">Abrindo o Mercado Pago…</p>`,
+    verificando:`<p class="small" role="status">Conferindo seu pagamento…</p>`,
+    pendente:`<div class="note" role="status">Seu pagamento está em processamento. Esta tela confere sozinha a cada poucos segundos e abre o seu plano assim que ele for aprovado.</div>`,
+    parado:`<div class="note" role="status">Ainda não recebemos a confirmação do pagamento. Se você já pagou, toque em "Já paguei" para conferir de novo.</div>`,
+    naoachado:`<div class="note" role="status">Ainda não encontramos um pagamento seu. Se acabou de pagar, espere alguns segundos e toque em "Já paguei" de novo.</div>`,
+    recusado:`<div class="alert" role="alert">O pagamento não foi aprovado. Você pode tentar de novo, com Pix ou outro cartão.</div>`,
+    estornado:`<div class="alert" role="alert">Esta compra foi reembolsada. Para ter acesso ao plano, é preciso comprar de novo.</div>`,
+    erro:`<div class="alert" role="alert">${esc(c.msg||"Não foi possível concluir agora. Tente de novo em instantes.")}</div>`
+  }[c.estado]||"";
+  main.innerHTML=`<div class="screen">
+   <div class="card hero"><p class="eyebrow" style="color:var(--on-accent);opacity:.8">Seu plano está pronto</p>
+    <h2>${nome?esc(nome)+", seu":"Seu"} plano de 7 dias foi montado</h2>
+    <p>Ele foi feito a partir das suas respostas: diagnóstico do que está travando você, tarefas para cada dia e uma rotina semanal.</p></div>
+   ${cats?`<div class="card"><p class="eyebrow">O que o seu plano prioriza</p><ul class="plain">${cats}</ul></div>`:""}
+   <div class="card offer"><p class="eyebrow">Destrave o Sucesso em 7 Dias</p>
+    <p class="price">${PRECO_TXT}</p><p class="small muted">Pagamento único. Não é assinatura.</p>
+    <ul class="plain"><li>Diagnóstico do que está travando você</li><li>Roteiro de 7 dias com tarefas diárias</li><li>Metas por categoria e rotina semanal editável</li><li>Avaliação no fim da semana</li></ul>
+    ${aviso}
+    <button class="btn" id="pagar" type="button" ${ocupado?"disabled":""}>Pagar com Pix ou cartão</button>
+    <p class="small muted">O pagamento é feito no Mercado Pago. Assim que ele for aprovado, você volta sozinho para o app.</p>
+    <button class="link" id="japaguei" type="button" style="align-self:center" ${ocupado?"disabled":""}>Já paguei</button></div>
+   <p class="small muted">Você pode pedir o reembolso em até 7 dias após a compra, pelo suporte.</p>
+   <button class="btn ghost" id="cvolta" type="button">Voltar ao início</button>
+   <button class="link" id="help" type="button" style="align-self:center">Precisa de ajuda? Falar com o suporte</button>
+  </div>`;
+  $("#pagar").onclick=pagar;
+  $("#japaguei").onclick=()=>verificarPagamento("",false);
+  $("#cvolta").onclick=()=>{clearTimeout(COMPRA.timer);go("welcome")};
+  $("#help").onclick=()=>{clearTimeout(COMPRA.timer);openSupport()};
+}
+async function pagar(){
+  clearTimeout(COMPRA.timer);
+  if(!window.destravePagamento){COMPRA.estado="erro";COMPRA.msg="O pagamento só funciona no site do app.";rCompra();return}
+  COMPRA.estado="abrindo";COMPRA.msg="";rCompra();
+  try{
+    const r=await window.destravePagamento.abrir((S.account&&S.account.email)||S.a.email||"");
+    if(r&&r.pago){liberarPlano();return}
+    if(!r||!/^https:\/\//.test(String(r.url||"")))throw {code:"upstream_error"};
+    tlog("abriu_pagamento");save();
+    location.href=r.url;
+  }catch(e){
+    COMPRA.estado="erro";COMPRA.msg=PAG_ERR[e&&e.code]||"Não foi possível abrir o pagamento agora. Tente de novo em instantes.";
+    if(S.view==="compra")rCompra();
+  }
+}
+// silencioso: confere sem mudar a tela (ao abrir o app), e só aparece se achar algo.
+async function verificarPagamento(paymentId,silencioso){
+  if(!window.destravePagamento||S.pago)return;
+  clearTimeout(COMPRA.timer);
+  if(!silencioso){COMPRA.estado="verificando";if(S.view==="compra")rCompra()}
+  try{
+    const r=await window.destravePagamento.situacao(paymentId||"");
+    if(r&&r.pago){liberarPlano(r.pagoEm);return}
+    const st=r&&r.status,esperando=silencioso&&COMPRA.estado==="pendente";
+    if(st==="pendente"){COMPRA.estado="pendente";agendarConferencia(paymentId)}
+    else if(st==="recusado")COMPRA.estado=silencioso&&!esperando?"":"recusado";
+    else if(st==="estornado")COMPRA.estado="estornado";
+    else if(esperando)agendarConferencia(paymentId);
+    else COMPRA.estado=silencioso?"":"naoachado";
+  }catch(e){
+    if(silencioso){if(COMPRA.estado==="pendente")agendarConferencia(paymentId);else COMPRA.estado=""}
+    else{COMPRA.estado="erro";COMPRA.msg=PAG_ERR[e&&e.code]||"Não foi possível conferir o pagamento agora. Tente de novo em instantes."}
+  }
+  if(S.view==="compra")rCompra();
+}
+// Pix pendente: confere a cada 5 segundos por até 5 minutos.
+function agendarConferencia(paymentId){
+  clearTimeout(COMPRA.timer);
+  if(++COMPRA.tentativas>60){COMPRA.tentativas=0;COMPRA.estado="parado";return}
+  COMPRA.timer=setTimeout(()=>{if(S.view==="compra")verificarPagamento(paymentId,true)},5000);
+}
+function liberarPlano(pagoEm){
+  clearTimeout(COMPRA.timer);
+  COMPRA={estado:"",msg:"",tentativas:0,timer:null,retorno:null};
+  S.pago=true;S.pagoEm=pagoEm?new Date(pagoEm).getTime()||Date.now():Date.now();
+  S.pagoMsg="Pagamento confirmado. Seu plano está liberado. Bom desafio!";
+  S.tab="inicio";track("pagamento_confirmado");
+  go("plan");
+}
 
 /* ---------- plano: estrutura ---------- */
 const sphName=id=>SPH[id]||({sono:"Sono",fixo:"Compromisso",outro:"Outro"}[id])||id;
@@ -1360,7 +1457,8 @@ function rPlan(){
   main.innerHTML=`<div class="screen" id="pv"></div>`;
   const pv=$("#pv");
   if(tab==="inicio"){
-    const banner=S.src==="exemplo"?`<div class="note">Plano de exemplo de um perfil fictício (Rafael). Para gerar o seu, toque em "Refazer questionário" no fim desta tela.</div>`:"";
+    const pagoMsg=S.pagoMsg?`<div class="okmsg" role="status"><span>${esc(S.pagoMsg)}</span></div>`:"";if(S.pagoMsg){S.pagoMsg="";save()}
+    const banner=pagoMsg+(S.src==="exemplo"?`<div class="note">Plano de exemplo de um perfil fictício (Rafael). Para gerar o seu, toque em "Refazer questionário" no fim desta tela.</div>`:"");
     const issues=S.issues&&S.issues.length?`<div class="alert"><b>Pontos para revisão humana</b> (o verificador encontrou e não conseguiu corrigir):<ul class="plain">${S.issues.map(i=>`<li>${esc(i)}</li>`).join("")}</ul></div>`:"";
     pv.innerHTML=banner+issues+`<div class="card bottleneck"><p class="eyebrow">O que está travando você</p><h2>${esc(p.gargalo&&p.gargalo.titulo)}</h2><p>${esc(p.gargalo&&p.gargalo.explicacao)}</p></div>
     <div class="card"><p class="eyebrow">Diagnóstico</p><h3>O que joga a seu favor</h3><ul class="plain">${(p.forcas||[]).map(x=>`<li>${esc(x)}</li>`).join("")}</ul><div class="sphbody" id="diagmore" ${S.diagOpen?"":"hidden"}><h3>O que te impede de vencer</h3><ul class="plain">${(p.obstaculos||[]).map(x=>`<li>${esc(x)}</li>`).join("")}</ul>
@@ -1483,14 +1581,11 @@ function rSurvey(){
     return;
   }
   if(S.survey){
-    const s=S.survey,offer=s.n>=5&&s.score>=7;
-    box.className="card"+(offer?" offer":"");
-    box.innerHTML=offer
-      ?`<p class="eyebrow">Você destravou ${s.n} de 7 dias</p><h3>Continue no ritmo com o Plano Completo</h3><p class="small">O app continua com check-in diário, rotina editável, revisão semanal guiada e um novo plano a cada 30 dias.</p><p class="price">R$ 99<span class="small muted">/mês</span></p><button class="btn" type="button" id="offerBtn">Quero continuar</button><p class="small muted">Oferta ilustrativa do protótipo.</p>`
-      :`<p class="eyebrow">Obrigado pela avaliação</p><h3>${s.n} de 7 dias concluídos</h3><p class="small">Semanas incompletas são comuns. Na revisão, corte uma tarefa em vez de acrescentar. Se quiser, responda o e-mail desta semana contando onde travou e ajustamos seu plano.</p>`;
+    const s=S.survey;
+    box.className="card";
+    box.innerHTML=`<p class="eyebrow">Obrigado pela avaliação</p><h3>${s.n} de 7 dias concluídos</h3><p class="small">Semanas incompletas são comuns. Na revisão, corte uma tarefa em vez de acrescentar. Se quiser, responda o e-mail desta semana contando onde travou e ajustamos seu plano.</p>`;
     box.insertAdjacentHTML("beforeend",`<button class="btn ghost" type="button" id="gift2">Resgatar Brinde</button>`);
     $("#gift2").onclick=()=>openSheet("Seu brinde","<p>O brinde deste desafio ainda está sendo preparado. No app real, ele é liberado aqui depois que você envia a avaliação.</p>");
-    if(offer)$("#offerBtn").onclick=()=>openSheet("Plano Completo",OFFER_HTML);
     return;
   }
   box.className="card";
@@ -1875,10 +1970,9 @@ function rAjustes(pv){
     ${S.account?`<div class="setrow"><div><b>${esc(S.a.nome||"Sua conta")}</b><br><span class="small muted">${esc(S.account.email)} · conta criada em ${new Date(S.account.criadaEm).toLocaleDateString("pt-BR")}</span></div><span class="pill">Conectado</span></div>
     <p class="small muted">No site real, você entra com este e-mail e a senha criada no questionário, em qualquer aparelho.</p></div>`
     :`<div class="setrow"><div><b>${esc(S.a.nome||"Visitante")}</b><br><span class="small muted">Você ainda não criou sua conta. Ela é criada ao terminar a primeira parte do questionário.</span></div></div></div>`}
-   <div class="card"><p class="eyebrow">Assinatura e pagamento</p>
-    <div class="setrow"><div><b>Destrave o Sucesso em 7 Dias</b><br><span class="small muted">Pagamento único</span></div><span class="pill">Ativo</span></div>
-    <div class="setrow"><div><b>Plano Completo</b><br><span class="small muted">App sem limite de semanas e novo plano a cada 30 dias. R$ 99/mês.</span></div><button class="mini" id="seeoffer">Conhecer</button></div>
-    <p class="small muted">Recibos e forma de pagamento ficam na plataforma de pagamento, que será definida na fase de implementação.</p></div>
+   <div class="card"><p class="eyebrow">Pagamento</p>
+    <div class="setrow"><div><b>Destrave o Sucesso em 7 Dias</b><br><span class="small muted">Pagamento único de ${PRECO_TXT}${S.pago&&S.pagoEm?` · pago em ${new Date(S.pagoEm).toLocaleDateString("pt-BR")}`:""}</span></div><span class="pill">${S.pago?"Pago":"Não comprado"}</span></div>
+    <p class="small muted">Dúvidas sobre pagamento ou reembolso: toque em "Falar com o suporte", no fim desta tela. Reembolso em até 7 dias após a compra.</p></div>
    <div class="card"><p class="eyebrow">Lembretes</p>
     <div class="setrow"><label for="lpush"><b>Notificação no celular</b><br><span class="small muted">Aviso na tela com a tarefa do dia e o check-in.</span></label><input type="checkbox" role="switch" id="lpush" ${P.push?"checked":""}></div>
     <p class="note" id="pushnote" ${P.push?"":"hidden"}>No site real, o celular pede sua permissão para enviar notificações. No iPhone, isso só funciona com o app adicionado à tela de início. No protótipo, só guardamos sua escolha.</p>
@@ -1903,8 +1997,7 @@ function rAjustes(pv){
   $("#lpush").onchange=e=>{S.prefs.push=e.target.checked;save();syncLemb()};
   $("#lhora").onchange=e=>{S.prefs.hora=e.target.value;save()};
 
-  $("#seeoffer").onclick=()=>openSheet("Plano Completo",OFFER_HTML);
-  $("#terms").onclick=()=>openSheet("Termos de uso",`<p class="note">Rascunho do protótipo. O texto final será redigido na fase de implementação, com revisão jurídica recomendada.</p><ul class="plain"><li>O plano é material educacional de organização pessoal, gerado com IA a partir das suas respostas.</li><li>Não substitui orientação médica, psicológica, jurídica ou de carreira.</li><li>Direito de arrependimento de 7 dias, conforme o Código de Defesa do Consumidor.</li><li>Regras de uso, cancelamento e reembolso do Plano Completo.</li></ul>`);
+  $("#terms").onclick=()=>openSheet("Termos de uso",`<p class="note">Rascunho do protótipo. O texto final será redigido na fase de implementação, com revisão jurídica recomendada.</p><ul class="plain"><li>O plano é material educacional de organização pessoal, gerado com IA a partir das suas respostas.</li><li>Não substitui orientação médica, psicológica, jurídica ou de carreira.</li><li>Direito de arrependimento de 7 dias, conforme o Código de Defesa do Consumidor.</li><li>Regras de pagamento e reembolso do desafio (pagamento único de R$ 47,90; reembolso em até 7 dias após a compra).</li></ul>`);
   $("#privacy").onclick=()=>openSheet("Política de privacidade",`<p class="note">Rascunho do protótipo, a ser finalizado com revisão jurídica.</p><ul class="plain"><li>Coletamos só o necessário para montar o plano. Não pedimos dados financeiros. De saúde, só uma descrição curta de limitação para atividade física, e apenas de quem marca que tem orientação médica.</li><li>Finalidade: gerar e acompanhar o seu plano. E-mail e telefone servem só para entrega e contato.</li><li>Suas respostas são enviadas a um fornecedor de IA para gerar o plano, exceto e-mail e telefone.</li><li>Durante o teste, e só se você aceitou ao criar a conta, suas respostas e seu progresso também chegam ao responsável pelo teste.</li><li>Você pode pedir acesso, correção ou exclusão dos seus dados (LGPD).</li><li>Prazo de guarda e forma de exclusão definidos na versão final.</li></ul>`);
   $("#ai").onclick=()=>openSheet("Como usamos IA",`<p>Seu plano é gerado por inteligência artificial a partir das suas respostas. Antes de você ver o plano, um verificador automático confere horários, compromissos fixos, carga de tarefas e limites de sono.</p><p>O plano não é revisado por um profissional humano, e pode ter erros. Se algo não fizer sentido, refaça o questionário ou fale com o suporte.</p>`);
   $("#del").onclick=()=>{AJ.confirmDel=true;rPlan()};
@@ -1925,7 +2018,21 @@ if(S.view==="plan"&&!S.plan)S.view="welcome";
 if(S.view==="suporte"&&(!S.supBack||S.supBack==="suporte"))S.supBack=S.plan?"plan":"welcome";
 if(S.src==="exemplo"){S.plan=EX_PLAN;if(S.start&&!S.startManual&&new Date(S.start).getDay()!==1){S.start=nextMonday();save()}}
 if(S.plan&&!S.start){S.start=Date.now();save()}
+// Volta do Mercado Pago: ?pagamento=retorno&payment_id=...&status=...
+// A URL é limpa e o pagamento é conferido no servidor (os parâmetros sozinhos não liberam nada).
+(function(){
+  let q;try{q=new URLSearchParams(location.search)}catch(e){return}
+  if(!q.has("pagamento"))return;
+  const pid=q.get("payment_id")||q.get("collection_id")||"";
+  try{history.replaceState(null,"",location.pathname)}catch(e){}
+  if(S.pago||!(S.plan&&S.src==="ia"))return;
+  S.view="compra";COMPRA.retorno={pid:/^\d{1,20}$/.test(pid)?pid:""};COMPRA.estado="verificando";
+})();
 render();
+if(!S.pago&&S.plan&&S.src==="ia"){
+  if(COMPRA.retorno)verificarPagamento(COMPRA.retorno.pid,false);
+  else if(S.view==="compra")verificarPagamento("",true);
+}
 </script>
 
 </body>
